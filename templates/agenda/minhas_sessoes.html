@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Minhas sessões — Studio Fitness{% endblock %}
+{% block content %}
+<h1>Minhas sessões</h1>
+<div class="card">
+    {% if sessoes %}
+        <table style="width:100%;border-collapse:collapse;">
+            <thead>
+                <tr>
+                    <th style="text-align:left;">Início</th>
+                    <th style="text-align:left;">Fim</th>
+                    <th style="text-align:left;">Professor</th>
+                    <th style="text-align:left;">Aluno</th>
+                    <th style="text-align:left;">Equipamento</th>
+                    <th style="text-align:left;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sessao in sessoes %}
+                <tr>
+                    <td>{{ sessao.inicio|date:"d/m/Y H:i" }}</td>
+                    <td>{{ sessao.fim|date:"d/m/Y H:i" }}</td>
+                    <td>{{ sessao.professor }}</td>
+                    <td>{{ sessao.aluno }}</td>
+                    <td>{{ sessao.equipamento|default:"—" }}</td>
+                    <td>{{ sessao.get_status_display }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Nenhuma sessão agendada.</p>
+    {% endif %}
+</div>
+{% endblock %}

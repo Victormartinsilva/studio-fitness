@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Painel — Studio Fitness{% endblock %}
+{% block content %}
+<h1>Olá, {{ request.user.first_name|default:request.user.username }}</h1>
+
+<div class="card">
+    <h2>Alertas</h2>
+    {% if alertas %}
+        {% for alerta in alertas %}
+            <div class="alerta">{{ alerta.mensagem }}</div>
+        {% endfor %}
+    {% else %}
+        <p>Nenhum alerta no momento.</p>
+    {% endif %}
+</div>
+{% endblock %}
