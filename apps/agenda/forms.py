@@ -8,7 +8,7 @@ class AgendarForm(forms.Form):
     aluno = forms.ModelChoiceField(queryset=Aluno.objects.filter(ativo=True))
     tipo = forms.ModelChoiceField(queryset=TipoSessao.objects.filter(ativo=True), label="Tipo de sessão")
     equipamento = forms.ModelChoiceField(
-        queryset=Equipamento.objects.exclude(status=Equipamento.Status.INATIVO),
+        queryset=Equipamento.objects.filter(status=Equipamento.Status.ATIVO),
         required=False,
     )
     data = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))

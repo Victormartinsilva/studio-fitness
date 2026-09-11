@@ -1,41 +1,77 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <title>{% block title %}Studio Fitness{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/png" href="{% static 'img/logo.png' %}">
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
-        header { background: #222; color: #fff; padding: 1rem 1.5rem; display: flex; justify-content: space-between; }
-        header a { color: #fff; text-decoration: none; margin-right: 1rem; }
+        :root {
+            --roxo: #6f2a86;
+            --verde: #7cb342;
+            --cinza-fundo: #f5f5f5;
+            --cinza-texto: #444;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background: var(--cinza-fundo); color: #222; }
+        header {
+            background: #fff; border-bottom: 3px solid var(--roxo);
+            padding: .6rem 1.5rem; display: flex; flex-wrap: wrap; align-items: center;
+            justify-content: space-between; gap: .5rem; position: sticky; top: 0; z-index: 10;
+        }
+        .marca { display: flex; align-items: center; gap: .5rem; text-decoration: none; margin-right: .5rem; }
+        .marca img { height: 40px; display: block; }
+        nav { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
+        nav a { color: var(--roxo); text-decoration: none; font-weight: 600; font-size: .95rem; }
+        nav a:hover { color: var(--verde); }
+        .usuario { display: flex; align-items: center; gap: .75rem; font-size: .9rem; color: var(--cinza-texto); }
+        .usuario button {
+            background: none; border: 1px solid #ccc; border-radius: 4px; padding: .3rem .6rem;
+            color: var(--cinza-texto); cursor: pointer; font-size: .85rem;
+        }
+        .usuario button:hover { border-color: var(--roxo); color: var(--roxo); }
         main { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+        h1 { color: var(--roxo); }
         .card { background: #fff; border-radius: 8px; padding: 1rem 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-        .alerta { padding: .5rem .75rem; border-left: 4px solid #2b7de9; background: #eaf2fd; margin-bottom: .5rem; border-radius: 4px; }
+        .alerta { padding: .5rem .75rem; border-left: 4px solid var(--verde); background: #f1f8e9; margin-bottom: .5rem; border-radius: 4px; }
         .messages { list-style: none; padding: 0; margin: 0 0 1rem 0; }
         .messages li { padding: .5rem .75rem; border-radius: 4px; margin-bottom: .5rem; background: #dff5e1; }
+        button[type="submit"], input[type="submit"] {
+            background: var(--roxo); color: #fff; border: none; border-radius: 4px;
+            padding: .5rem 1.2rem; font-size: .95rem; cursor: pointer;
+        }
+        button[type="submit"]:hover, input[type="submit"]:hover { background: #5a2170; }
+        @media (max-width: 600px) {
+            header { justify-content: center; text-align: center; }
+            nav { justify-content: center; }
+            main { margin: 1rem auto; }
+        }
     </style>
 </head>
 <body>
     <header>
-        <div>
-            <a href="{% url 'painel:home' %}">Studio Fitness</a>
-            {% if request.user.is_authenticated %}
-                <a href="{% url 'agenda:minhas_sessoes' %}">Agenda</a>
-                {% if request.user.is_superuser or request.user.is_gestor %}
-                    <a href="{% url 'cadastros:alunos' %}">Alunos</a>
-                    <a href="{% url 'cadastros:equipamentos' %}">Equipamentos</a>
-                    <a href="{% url 'cadastros:tipos_sessao' %}">Tipos de sessão</a>
-                    <a href="{% url 'planos:planos' %}">Planos</a>
-                    <a href="{% url 'planos:contratacoes' %}">Contratações</a>
-                {% endif %}
+        <a class="marca" href="{% url 'painel:home' %}">
+            <img src="{% static 'img/logo.png' %}" alt="Studio Fitness">
+        </a>
+        {% if request.user.is_authenticated %}
+        <nav>
+            <a href="{% url 'agenda:minhas_sessoes' %}">Agenda</a>
+            {% if request.user.is_superuser or request.user.is_gestor %}
+                <a href="{% url 'cadastros:alunos' %}">Alunos</a>
+                <a href="{% url 'cadastros:equipamentos' %}">Equipamentos</a>
+                <a href="{% url 'cadastros:tipos_sessao' %}">Tipos de sessão</a>
+                <a href="{% url 'planos:planos' %}">Planos</a>
+                <a href="{% url 'planos:contratacoes' %}">Contratações</a>
             {% endif %}
-        </div>
-        <div>
+        </nav>
+        {% endif %}
+        <div class="usuario">
             {% if request.user.is_authenticated %}
                 <span>{{ request.user.first_name|default:request.user.username }}</span>
                 <form method="post" action="{% url 'contas:logout' %}" style="display:inline">
                     {% csrf_token %}
-                    <button type="submit" style="background:none;border:none;color:#fff;cursor:pointer;text-decoration:underline;">Sair</button>
+                    <button type="submit">Sair</button>
                 </form>
             {% else %}
                 <a href="{% url 'contas:login' %}">Entrar</a>

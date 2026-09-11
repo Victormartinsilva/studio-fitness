@@ -12,8 +12,9 @@ from .models import EventoSessao, Sessao
 
 @transaction.atomic
 def agendar(*, professor, aluno, tipo, inicio, fim, equipamento=None, contratacao=None, usuario=None):
-    if not motor.verificar_disponibilidade(professor, equipamento, inicio, fim, tipo):
-        raise ValidationError("Professor ou equipamento indisponível nesse horário.")
+    motivo = motor.motivo_indisponibilidade(professor, equipamento, inicio, fim, tipo)
+    if motivo:
+        raise ValidationError(motivo)
 
     reserva_inicio, reserva_fim, prof_inicio, prof_fim = motor.calcular_janelas(inicio, fim, tipo)
 
@@ -41,10 +42,11 @@ def agendar(*, professor, aluno, tipo, inicio, fim, equipamento=None, contrataca
 @transaction.atomic
 def remarcar(*, sessao, inicio, fim, equipamento=None, usuario=None):
     equipamento = equipamento or sessao.equipamento
-    if not motor.verificar_disponibilidade(
+    motivo = motor.motivo_indisponibilidade(
         sessao.professor, equipamento, inicio, fim, sessao.tipo, excluir_sessao_id=sessao.pk
-    ):
-        raise ValidationError("Professor ou equipamento indisponível nesse horário.")
+    )
+    if motivo:
+        raise ValidationError(motivo)
 
     reserva_inicio, reserva_fim, prof_inicio, prof_fim = motor.calcular_janelas(inicio, fim, sessao.tipo)
 
