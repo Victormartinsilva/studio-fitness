@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Agendar sessão — Studio Fitness{% endblock %}
+{% block content %}
+<h1>Agendar sessão</h1>
+<div class="card" style="max-width:480px;">
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Agendar</button>
+        <a href="{% url 'agenda:minhas_sessoes' %}">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

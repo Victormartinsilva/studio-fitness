@@ -2,6 +2,9 @@
 {% block title %}Minhas sessões — Studio Fitness{% endblock %}
 {% block content %}
 <h1>Minhas sessões</h1>
+{% if pode_agendar %}
+<p><a href="{% url 'agenda:agendar' %}">+ Agendar nova sessão</a></p>
+{% endif %}
 <div class="card">
     {% if sessoes %}
         <table style="width:100%;border-collapse:collapse;">
@@ -13,6 +16,7 @@
                     <th style="text-align:left;">Aluno</th>
                     <th style="text-align:left;">Equipamento</th>
                     <th style="text-align:left;">Status</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -24,6 +28,14 @@
                     <td>{{ sessao.aluno }}</td>
                     <td>{{ sessao.equipamento|default:"—" }}</td>
                     <td>{{ sessao.get_status_display }}</td>
+                    <td>
+                        {% if pode_agendar %}
+                        <form method="post" action="{% url 'agenda:cancelar' sessao.pk %}" onsubmit="return confirm('Cancelar esta sessão?');">
+                            {% csrf_token %}
+                            <button type="submit" style="background:none;border:none;color:#c0392b;cursor:pointer;">Cancelar</button>
+                        </form>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>

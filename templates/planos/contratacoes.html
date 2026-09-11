@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Contratações — Studio Fitness{% endblock %}
+{% block content %}
+<h1>Contratações</h1>
+
+<div class="card">
+    <h2>{% if editando %}Editar contratação{% else %}Nova contratação{% endif %}</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Salvar</button>
+        {% if editando %}<a href="{% url 'planos:contratacoes' %}">Cancelar</a>{% endif %}
+    </form>
+</div>
+
+<div class="card">
+    <table style="width:100%;border-collapse:collapse;">
+        <thead>
+            <tr><th style="text-align:left;">Aluno</th><th style="text-align:left;">Plano</th><th style="text-align:left;">Início</th><th style="text-align:left;">Status</th><th></th></tr>
+        </thead>
+        <tbody>
+            {% for contratacao in itens %}
+            <tr>
+                <td>{{ contratacao.aluno }}</td>
+                <td>{{ contratacao.plano }}</td>
+                <td>{{ contratacao.data_inicio|date:"d/m/Y" }}</td>
+                <td>{{ contratacao.get_status_display }}</td>
+                <td>
+                    <a href="{% url 'planos:contratacoes_editar' contratacao.pk %}">Editar</a>
+                    <form method="post" action="{% url 'planos:contratacoes_editar' contratacao.pk %}" style="display:inline" onsubmit="return confirm('Excluir esta contratação?');">
+                        {% csrf_token %}
+                        <button type="submit" name="_excluir" value="1" style="background:none;border:none;color:#c0392b;cursor:pointer;">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5">Nenhuma contratação cadastrada.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

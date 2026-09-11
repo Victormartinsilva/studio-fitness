@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Alunos — Studio Fitness{% endblock %}
+{% block content %}
+<h1>Alunos</h1>
+
+<div class="card">
+    <h2>{% if editando %}Editar aluno{% else %}Novo aluno{% endif %}</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Salvar</button>
+        {% if editando %}<a href="{% url 'cadastros:alunos' %}">Cancelar</a>{% endif %}
+    </form>
+</div>
+
+<div class="card">
+    <table style="width:100%;border-collapse:collapse;">
+        <thead>
+            <tr><th style="text-align:left;">Nome</th><th style="text-align:left;">Telefone</th><th style="text-align:left;">E-mail</th><th style="text-align:left;">Ativo</th><th></th></tr>
+        </thead>
+        <tbody>
+            {% for aluno in itens %}
+            <tr>
+                <td>{{ aluno.nome }}</td>
+                <td>{{ aluno.telefone }}</td>
+                <td>{{ aluno.email }}</td>
+                <td>{{ aluno.ativo|yesno:"Sim,Não" }}</td>
+                <td>
+                    <a href="{% url 'cadastros:alunos_editar' aluno.pk %}">Editar</a>
+                    <form method="post" action="{% url 'cadastros:alunos_editar' aluno.pk %}" style="display:inline" onsubmit="return confirm('Excluir este aluno?');">
+                        {% csrf_token %}
+                        <button type="submit" name="_excluir" value="1" style="background:none;border:none;color:#c0392b;cursor:pointer;">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5">Nenhum aluno cadastrado.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

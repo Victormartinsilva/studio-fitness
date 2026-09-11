@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Planos — Studio Fitness{% endblock %}
+{% block content %}
+<h1>Planos</h1>
+
+<div class="card">
+    <h2>{% if editando %}Editar plano{% else %}Novo plano{% endif %}</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Salvar</button>
+        {% if editando %}<a href="{% url 'planos:planos' %}">Cancelar</a>{% endif %}
+    </form>
+</div>
+
+<div class="card">
+    <table style="width:100%;border-collapse:collapse;">
+        <thead>
+            <tr><th style="text-align:left;">Nome</th><th style="text-align:left;">Modalidade</th><th style="text-align:left;">Valor</th><th style="text-align:left;">Ativo</th><th></th></tr>
+        </thead>
+        <tbody>
+            {% for plano in itens %}
+            <tr>
+                <td>{{ plano.nome }}</td>
+                <td>{{ plano.get_modalidade_display }}</td>
+                <td>{{ plano.valor|default:"—" }}</td>
+                <td>{{ plano.ativo|yesno:"Sim,Não" }}</td>
+                <td>
+                    <a href="{% url 'planos:planos_editar' plano.pk %}">Editar</a>
+                    <form method="post" action="{% url 'planos:planos_editar' plano.pk %}" style="display:inline" onsubmit="return confirm('Excluir este plano?');">
+                        {% csrf_token %}
+                        <button type="submit" name="_excluir" value="1" style="background:none;border:none;color:#c0392b;cursor:pointer;">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5">Nenhum plano cadastrado.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
