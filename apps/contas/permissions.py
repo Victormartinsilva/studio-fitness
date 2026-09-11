@@ -30,3 +30,16 @@ def admin_required(view_func):
         return view_func(request, *args, **kwargs)
 
     return wrapper
+
+
+def professor_required(view_func):
+    """Restringe a página ao professor dono do próprio cadastro (ex.: seus alunos)."""
+
+    @login_required
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not (request.user.is_professor and hasattr(request.user, "professor")):
+            raise PermissionDenied("Apenas professores podem acessar esta página.")
+        return view_func(request, *args, **kwargs)
+
+    return wrapper

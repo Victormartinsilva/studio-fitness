@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Meus alunos — Studio Fitness{% endblock %}
+{% block content %}
+<div class="linha-titulo">
+    <h1>Meus alunos</h1>
+    <p class="sub">{{ itens|length }} aluno{{ itens|length|pluralize }} com sessões marcadas com você</p>
+</div>
+
+<div class="lista">
+    {% for item in itens %}
+    <div class="item">
+        <span class="iniciais">{{ item.aluno.nome|slice:":2"|upper }}</span>
+        <div class="corpo">
+            <span class="titulo">{{ item.aluno.nome }}</span>
+            <span class="meta">{{ item.aluno.telefone|default:"sem telefone" }}{% if item.aluno.email %} · {{ item.aluno.email }}{% endif %}</span>
+            <span class="meta">
+                {{ item.total }} sessão{{ item.total|pluralize }} com você
+                {% if item.proxima %} · próxima em {{ item.proxima|date:"d/m H:i" }}{% elif item.ultima %} · última em {{ item.ultima|date:"d/m H:i" }}{% endif %}
+            </span>
+        </div>
+        <div class="acoes">
+            <span class="tag {% if item.aluno.ativo %}ok{% else %}off{% endif %}">{{ item.aluno.ativo|yesno:"Ativo,Inativo" }}</span>
+        </div>
+    </div>
+    {% empty %}
+    <div class="card vazio">Você ainda não tem sessões agendadas com alunos.</div>
+    {% endfor %}
+</div>
+{% endblock %}

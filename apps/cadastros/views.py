@@ -1,7 +1,8 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
-from apps.contas.permissions import gestor_required
+from apps.contas.permissions import gestor_required, professor_required
 
 from .forms import AlunoForm, EquipamentoForm, TipoSessaoForm
 from .models import Aluno, Equipamento, TipoSessao
@@ -48,3 +49,33 @@ def tipos_sessao(request, pk=None):
         request, TipoSessao, TipoSessaoForm, "cadastros/tipos_sessao.html", "cadastros:tipos_sessao",
         "tipos", pk,
     )
+
+
+@professor_required
+def meus_alunos(request):
+    """Lista os alunos com quem o professor logado tem sessões agendadas
+    (passadas ou futuras, exceto canceladas), com um resumo de frequência."""
+    from apps.agenda.models import Sessao  # import tardio evita ciclo entre apps
+
+    professor = request.user.professor
+    agora = timezone.now()
+    sessoes = (
+        Sessao.objects.filter(professor=professor)
+        .exclude(status=Sessao.Status.CANCELADA)
+        .select_related("aluno")
+        .order_by("inicio")
+    )
+
+    resumo = {}
+    for sessao in sessoes:
+        info = resumo.setdefault(
+            sessao.aluno_id, {"aluno": sessao.aluno, "total": 0, "proxima": None, "ultima": None}
+        )
+        info["total"] += 1
+        if sessao.inicio >= agora and (info["proxima"] is None or sessao.inicio < info["proxima"]):
+            info["proxima"] = sessao.inicio
+        if sessao.inicio < agora and (info["ultima"] is None or sessao.inicio > info["ultima"]):
+            info["ultima"] = sessao.inicio
+
+    itens = sorted(resumo.values(), key=lambda item: item["aluno"].nome)
+    return render(request, "cadastros/meus_alunos.html", {"itens": itens, "aba": "meus_alunos"})
