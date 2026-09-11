@@ -4,18 +4,8 @@
 <div class="linha-titulo">
     <h1>Tipos de sessão</h1>
     <p class="sub">Duração, preparo e troca usados pelo motor da agenda</p>
-</div>
-
-<div class="card" style="margin-bottom:16px">
-    <h2>{% if editando %}Editar tipo{% else %}Novo tipo{% endif %}</h2>
-    <form method="post" class="form">
-        {% csrf_token %}
-        <div class="form-2col">{{ form.as_p }}</div>
-        <div class="acoes-form">
-            <button type="submit">Salvar</button>
-            {% if editando %}<a class="btn btn-secundario" href="{% url 'cadastros:tipos_sessao' %}">Cancelar</a>{% endif %}
-        </div>
-    </form>
+    <span class="espaco"></span>
+    <a class="botao-mais" href="{% url 'cadastros:tipos_sessao' %}?novo=1" title="Novo tipo">+</a>
 </div>
 
 <div class="lista">
@@ -39,4 +29,6 @@
     <div class="card vazio">Nenhum tipo de sessão cadastrado.</div>
     {% endfor %}
 </div>
+
+{% include "_partials/modal_formulario.html" with titulo_novo="Novo tipo" titulo_editar="Editar tipo" cancel_url="cadastros:tipos_sessao" %}
 {% endblock %}

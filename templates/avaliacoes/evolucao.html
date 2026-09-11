@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Avaliações de {{ aluno.nome }} — Studio Fitness{% endblock %}
+{% block content %}
+<div class="linha-titulo">
+    <div>
+        <h1>Avaliações físicas</h1>
+        <p class="sub">{{ aluno.nome }}</p>
+    </div>
+    <span class="espaco"></span>
+    <a class="btn btn-secundario" href="{% url 'cadastros:alunos' %}">Voltar</a>
+    <a class="botao-mais" href="{% url 'avaliacoes:evolucao' aluno.pk %}?novo=1" title="Nova avaliação">+</a>
+</div>
+
+<div class="metricas">
+    {% for metrica in metricas %}
+    <div class="metrica {{ metrica.classe }}">
+        <div class="rotulo">{{ metrica.rotulo }}</div>
+        <div class="valor-metrica">{{ metrica.valor }}</div>
+        {% if metrica.delta %}<div class="delta">{{ metrica.delta }}</div>{% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+{% if pontos_grafico %}
+<section class="card" style="margin-top:16px">
+    <h2>Evolução do peso</h2>
+    <svg class="grafico-evolucao" viewBox="0 0 340 140" role="img" aria-label="Evolução do peso">
+        <polyline class="linha" points="{% for ponto in pontos_grafico %}{{ ponto.x }},{{ ponto.y }} {% endfor %}"></polyline>
+        {% for ponto in pontos_grafico %}
+        <circle class="ponto" cx="{{ ponto.x }}" cy="{{ ponto.y }}" r="4"></circle>
+        <text class="rotulo-valor" x="{{ ponto.x }}" y="{{ ponto.label_y }}" text-anchor="middle">{{ ponto.peso }} kg</text>
+        <text class="rotulo-eixo" x="{{ ponto.x }}" y="136" text-anchor="middle">{{ ponto.data }}</text>
+        {% endfor %}
+    </svg>
+</section>
+{% endif %}
+
+<section style="margin-top:16px">
+    <h2>Histórico</h2>
+    <div class="lista">
+        {% for avaliacao in avaliacoes %}
+        <div class="item">
+            <span class="iniciais">{{ avaliacao.data|date:"d" }}</span>
+            <div class="corpo">
+                <span class="titulo">{{ avaliacao.data|date:"d/m/Y" }}</span>
+                <span class="meta">
+                    {% if avaliacao.peso_kg %}{{ avaliacao.peso_kg }} kg{% endif %}
+                    {% if avaliacao.percentual_gordura %} · {{ avaliacao.percentual_gordura }}% de gordura{% endif %}
+                    {% if avaliacao.massa_magra_kg %} · {{ avaliacao.massa_magra_kg }} kg de massa magra{% endif %}
+                </span>
+                {% if avaliacao.observacoes %}<span class="meta">{{ avaliacao.observacoes }}</span>{% endif %}
+            </div>
+            <div class="acoes">
+                <a class="btn btn-secundario btn-sm" href="{% url 'avaliacoes:editar' aluno.pk avaliacao.pk %}">Editar</a>
+                <form method="post" action="{% url 'avaliacoes:editar' aluno.pk avaliacao.pk %}" onsubmit="return confirm('Excluir esta avaliação?');">
+                    {% csrf_token %}
+                    <button type="submit" name="_excluir" value="1" class="btn-perigo">Excluir</button>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <div class="card vazio">Nenhuma avaliação registrada.</div>
+        {% endfor %}
+    </div>
+</section>
+
+{% include "_partials/modal_formulario.html" with titulo_novo="Nova avaliação" titulo_editar="Editar avaliação" cancel_url="avaliacoes:evolucao" cancel_arg=cancel_arg %}
+{% endblock %}

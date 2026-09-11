@@ -3,23 +3,13 @@
 {% block content %}
 <div class="linha-titulo">
     <h1>Contratações</h1>
+    <span class="espaco"></span>
+    <a class="botao-mais" href="{% url 'planos:contratacoes' %}?novo=1" title="Nova contratação">+</a>
 </div>
 
 <div class="abas" style="max-width:360px;margin-bottom:16px">
     <a href="{% url 'planos:planos' %}">Planos</a>
     <a href="{% url 'planos:contratacoes' %}" class="ativo">Contratações</a>
-</div>
-
-<div class="card" style="margin-bottom:16px">
-    <h2>{% if editando %}Editar contratação{% else %}Nova contratação{% endif %}</h2>
-    <form method="post" class="form">
-        {% csrf_token %}
-        <div class="form-2col">{{ form.as_p }}</div>
-        <div class="acoes-form">
-            <button type="submit">Salvar</button>
-            {% if editando %}<a class="btn btn-secundario" href="{% url 'planos:contratacoes' %}">Cancelar</a>{% endif %}
-        </div>
-    </form>
 </div>
 
 <div class="lista">
@@ -43,4 +33,6 @@
     <div class="card vazio">Nenhuma contratação cadastrada.</div>
     {% endfor %}
 </div>
+
+{% include "_partials/modal_formulario.html" with titulo_novo="Nova contratação" titulo_editar="Editar contratação" cancel_url="planos:contratacoes" %}
 {% endblock %}

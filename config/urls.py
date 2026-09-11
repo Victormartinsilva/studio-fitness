@@ -7,5 +7,6 @@ urlpatterns = [
     path("cadastros/", include("apps.cadastros.urls")),
     path("planos/", include("apps.planos.urls")),
     path("agenda/", include("apps.agenda.urls")),
+    path("avaliacoes/", include("apps.avaliacoes.urls")),
     path("", include("apps.painel.urls")),
 ]

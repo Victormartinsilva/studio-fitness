@@ -4,18 +4,8 @@
 <div class="linha-titulo">
     <h1>Alunos</h1>
     <p class="sub">{{ itens|length }} cadastrados</p>
-</div>
-
-<div class="card" style="margin-bottom:16px">
-    <h2>{% if editando %}Editar aluno{% else %}Novo aluno{% endif %}</h2>
-    <form method="post" class="form">
-        {% csrf_token %}
-        <div class="form-2col">{{ form.as_p }}</div>
-        <div class="acoes-form">
-            <button type="submit">Salvar</button>
-            {% if editando %}<a class="btn btn-secundario" href="{% url 'cadastros:alunos' %}">Cancelar</a>{% endif %}
-        </div>
-    </form>
+    <span class="espaco"></span>
+    <a class="botao-mais" href="{% url 'cadastros:alunos' %}?novo=1" title="Novo aluno">+</a>
 </div>
 
 <div class="lista">
@@ -28,6 +18,7 @@
         </div>
         <div class="acoes">
             <span class="tag {% if aluno.ativo %}ok{% else %}off{% endif %}">{{ aluno.ativo|yesno:"Ativo,Inativo" }}</span>
+            <a class="btn btn-secundario btn-sm" href="{% url 'avaliacoes:evolucao' aluno.pk %}">Avaliações</a>
             <a class="btn btn-secundario btn-sm" href="{% url 'cadastros:alunos_editar' aluno.pk %}">Editar</a>
             <form method="post" action="{% url 'cadastros:alunos_editar' aluno.pk %}" onsubmit="return confirm('Excluir este aluno?');">
                 {% csrf_token %}
@@ -39,4 +30,6 @@
     <div class="card vazio">Nenhum aluno cadastrado.</div>
     {% endfor %}
 </div>
+
+{% include "_partials/modal_formulario.html" with titulo_novo="Novo aluno" titulo_editar="Editar aluno" cancel_url="cadastros:alunos" %}
 {% endblock %}

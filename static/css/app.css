@@ -259,6 +259,50 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 .legenda i.preparo { background: var(--hachura); }
 .legenda i.bloqueio { background: var(--hachura-cinza); border: 1px dashed #c3bac9; }
 
+/* ---------- botão "+" retrátil (abre o formulário de novo/editar) ---------- */
+.botao-mais {
+  width: 44px; height: 44px; flex: none; border-radius: 50%;
+  background: var(--roxo); color: #fff; border: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; line-height: 1; text-decoration: none; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(46,18,56,.18);
+}
+.botao-mais:hover { background: #5a2170; color: #fff; }
+
+/* ---------- modal do formulário (sem depender de JS) ---------- */
+.modal-fundo { position: fixed; inset: 0; background: rgba(36,16,44,.5); z-index: 40; }
+dialog.modal-cartao { border: none; padding: 0; margin: 0; }
+dialog.modal-cartao:not([open]) { display: none; }
+dialog.modal-cartao[open] {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  z-index: 41; width: min(560px, 92vw); max-height: 88vh; overflow: auto;
+  background: var(--superficie); border-radius: var(--r-lg); padding: 18px;
+  box-shadow: 0 20px 60px rgba(36,16,44,.28);
+}
+.modal-cabecalho { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.modal-cabecalho h2 { margin: 0; }
+.modal-fechar { color: var(--ink-4); font-size: 22px; line-height: 1; text-decoration: none; }
+.modal-fechar:hover { color: var(--roxo); }
+
+/* ---------- métricas com variação (avaliação física) ---------- */
+.metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.metrica {
+  background: var(--superficie); border: 1px solid var(--borda); border-left: 4px solid var(--roxo);
+  border-radius: var(--r-md); padding: 12px 14px;
+}
+.metrica.verde { border-left-color: var(--verde); }
+.metrica.azul { border-left-color: #2b7de9; }
+.metrica .rotulo { margin-bottom: 2px; }
+.metrica .valor-metrica { font-family: "Outfit", sans-serif; font-weight: 700; font-size: 22px; color: var(--ink); line-height: 1.2; }
+.metrica .delta { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+
+/* ---------- gráfico de evolução (SVG simples) ---------- */
+.grafico-evolucao { width: 100%; height: auto; display: block; }
+.grafico-evolucao .linha { fill: none; stroke: var(--roxo); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.grafico-evolucao .ponto { fill: var(--roxo); }
+.grafico-evolucao .rotulo-eixo { font-size: 9px; fill: var(--ink-4); font-family: "Public Sans", sans-serif; }
+.grafico-evolucao .rotulo-valor { font-size: 10px; font-weight: 600; fill: var(--ink-2); font-family: "Public Sans", sans-serif; }
+
 /* ---------- abas segmentadas ---------- */
 .abas { display: flex; background: #f2eef5; border-radius: var(--r-md); padding: 3px; }
 .abas a {

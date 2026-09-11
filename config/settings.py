@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "apps.cadastros",
     "apps.planos",
     "apps.agenda",
+    "apps.avaliacoes",
     "apps.painel",
 ]
 

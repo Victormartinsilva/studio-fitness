@@ -4,18 +4,8 @@
 <div class="linha-titulo">
     <h1>Equipamentos</h1>
     <p class="sub">{{ itens|length }} cadastrados</p>
-</div>
-
-<div class="card" style="margin-bottom:16px">
-    <h2>{% if editando %}Editar equipamento{% else %}Novo equipamento{% endif %}</h2>
-    <form method="post" class="form">
-        {% csrf_token %}
-        <div class="form-2col">{{ form.as_p }}</div>
-        <div class="acoes-form">
-            <button type="submit">Salvar</button>
-            {% if editando %}<a class="btn btn-secundario" href="{% url 'cadastros:equipamentos' %}">Cancelar</a>{% endif %}
-        </div>
-    </form>
+    <span class="espaco"></span>
+    <a class="botao-mais" href="{% url 'cadastros:equipamentos' %}?novo=1" title="Novo equipamento">+</a>
 </div>
 
 <div class="lista">
@@ -38,4 +28,6 @@
     <div class="card vazio">Nenhum equipamento cadastrado.</div>
     {% endfor %}
 </div>
+
+{% include "_partials/modal_formulario.html" with titulo_novo="Novo equipamento" titulo_editar="Editar equipamento" cancel_url="cadastros:equipamentos" %}
 {% endblock %}

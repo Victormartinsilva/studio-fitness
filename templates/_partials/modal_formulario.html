@@ -1,0 +1,26 @@
+{% comment %}
+Formulário de novo/editar retrátil: só aparece quando a lista está em modo
+"editando" (URL /pk/) ou quando ?novo=1 está na querystring. Sem depender de
+JS — a URL é que controla o estado, então funciona mesmo sem JavaScript.
+
+Parâmetros esperados via {% include ... with %}:
+  titulo_novo, titulo_editar, cancel_url (nome da rota, ex.: "cadastros:alunos")
+  e, opcionalmente, cancel_arg (argumento posicional da rota de cancelamento)
+{% endcomment %}
+{% if editando or request.GET.novo %}
+<div class="modal-fundo"></div>
+<dialog open class="modal-cartao">
+    <div class="modal-cabecalho">
+        <h2>{% if editando %}{{ titulo_editar }}{% else %}{{ titulo_novo }}{% endif %}</h2>
+        <a class="modal-fechar" href="{% if cancel_arg %}{% url cancel_url cancel_arg %}{% else %}{% url cancel_url %}{% endif %}" title="Fechar">×</a>
+    </div>
+    <form method="post" class="form">
+        {% csrf_token %}
+        <div class="form-2col">{{ form.as_p }}</div>
+        <div class="acoes-form">
+            <button type="submit">Salvar</button>
+            <a class="btn btn-secundario" href="{% if cancel_arg %}{% url cancel_url cancel_arg %}{% else %}{% url cancel_url %}{% endif %}">Cancelar</a>
+        </div>
+    </form>
+</dialog>
+{% endif %}
