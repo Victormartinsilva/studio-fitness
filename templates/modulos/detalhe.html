@@ -12,15 +12,10 @@
         <span style="font-weight:600">Este pilar já está disponível na plataforma.</span>
         <span class="detalhe">Acesse-o pelo menu principal conforme seu perfil.</span>
     </div>
-    {% elif pode_ver_previa %}
-    <div class="alerta aviso">
-        <span style="font-weight:600">Prévia administrativa</span>
-        <span class="detalhe">Este módulo está planejado e bloqueado para os demais perfis até a conclusão da Fase {{ modulo.fase }}.</span>
-    </div>
     {% else %}
     <div class="alerta aviso">
-        <span style="font-weight:600">Módulo em desenvolvimento</span>
-        <span class="detalhe">Ele será liberado para {{ modulo.publico|lower }} após a conclusão da Fase {{ modulo.fase }}.</span>
+        <span style="font-weight:600">Prévia administrativa</span>
+        <span class="detalhe">Este módulo está planejado e bloqueado para os demais perfis até a conclusão da Fase {{ modulo.fase }}. Use "Configurar visões dos usuários" para liberar uma prévia no painel de um perfil.</span>
     </div>
     {% endif %}
 

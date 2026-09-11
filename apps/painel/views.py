@@ -6,6 +6,8 @@ from django.utils import timezone
 
 from apps.cadastros.models import Aluno, Equipamento
 from apps.agenda.models import Sessao
+from apps.modulos.catalogo import MODULOS
+from apps.modulos.models import VisibilidadeModulo
 
 from .alertas import gerar_alertas
 
@@ -41,6 +43,13 @@ def home(request):
             {"valor": equipamentos, "nome": "Equipamentos ativos"},
         ]
 
+    modulos_previa = []
+    if not (usuario.is_superuser or usuario.is_gestor):
+        slugs_visiveis = set(
+            VisibilidadeModulo.objects.filter(papel=usuario.papel, visivel=True).values_list("slug", flat=True)
+        )
+        modulos_previa = [modulo for modulo in MODULOS if not modulo.liberado and modulo.slug in slugs_visiveis]
+
     return render(
         request,
         "painel/home.html",
@@ -52,5 +61,7 @@ def home(request):
             "kpis": kpis,
             "pode_agendar": usuario.is_superuser or usuario.is_gestor or usuario.is_professor,
             "proximas_24h": minhas.filter(inicio__gte=agora, inicio__lte=agora + timedelta(hours=24)).count(),
+            "modulos_previa": modulos_previa,
         },
     )
+

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Configurar visões dos usuários — Studio Fitness{% endblock %}
+{% block content %}
+<div class="linha-titulo">
+    <div>
+        <h1>Configurar visões dos usuários</h1>
+        <p class="sub">Escolha quais módulos em desenvolvimento aparecem como prévia ("Em breve") no painel de cada perfil.</p>
+    </div>
+    <span class="espaco"></span>
+    <a class="btn btn-secundario btn-sm" href="{% url 'modulos:indice' %}">Voltar aos módulos</a>
+</div>
+
+<div class="card">
+    <form method="post">
+        {% csrf_token %}
+        <table class="tabela-visoes">
+            <thead>
+                <tr>
+                    <th>Módulo</th>
+                    {% for papel in linhas.0.papeis %}<th>{{ papel.rotulo }}</th>{% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for linha in linhas %}
+                <tr>
+                    <td>
+                        <strong>{{ linha.modulo.titulo }}</strong>
+                        <div class="meta">Fase {{ linha.modulo.fase }} · {{ linha.modulo.publico }}</div>
+                    </td>
+                    {% for papel in linha.papeis %}
+                    <td>
+                        <input type="checkbox" name="{{ papel.papel }}__{{ linha.modulo.slug }}" {% if papel.marcado %}checked{% endif %}>
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% empty %}
+                <tr><td colspan="3">Nenhum módulo em desenvolvimento no momento.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="acoes-form">
+            <button type="submit">Salvar</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

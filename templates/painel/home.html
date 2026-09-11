@@ -67,10 +67,13 @@
 </div>
 
 <section style="margin-top:20px">
+    {% if request.user.is_superuser or request.user.is_gestor %}
     <div class="linha-titulo">
         <h2>Plataforma por fases</h2>
         <span class="espaco"></span>
-        <a class="btn btn-secundario btn-sm" href="{% url 'modulos:indice' %}">Ver módulos</a>
+        {% if request.user.is_superuser %}
+        <a class="btn btn-secundario btn-sm" href="{% url 'modulos:visoes' %}">Configurar visões dos usuários</a>
+        {% endif %}
     </div>
     <div class="pilares">
         <div class="pilar"><span class="fase">Fase 1</span><strong>Base da operação</strong><span>Cadastros e agenda inteligente</span></div>
@@ -78,5 +81,13 @@
         <div class="pilar bloqueado"><span class="fase">Fase 3</span><strong>Experiência do aluno</strong><span>Em desenvolvimento</span></div>
         <div class="pilar bloqueado"><span class="fase">Fase 4</span><strong>Automação</strong><span>Em desenvolvimento</span></div>
     </div>
+    {% elif modulos_previa %}
+    <h2>Em breve para você</h2>
+    <div class="pilares">
+        {% for modulo in modulos_previa %}
+        <div class="pilar bloqueado"><span class="fase">Fase {{ modulo.fase }}</span><strong>{{ modulo.titulo }}</strong><span>{{ modulo.descricao }}</span></div>
+        {% endfor %}
+    </div>
+    {% endif %}
 </section>
 {% endblock %}
