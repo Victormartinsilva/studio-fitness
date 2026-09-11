@@ -1,0 +1,22 @@
+# Blueprint do Render. Banco fica no Neon (DATABASE_URL configurada manualmente no painel).
+# Versão do Python: lida do arquivo .python-version.
+services:
+  - type: web
+    name: studio-fitness
+    runtime: python
+    plan: starter            # "free" funciona, mas dorme após 15 min sem acesso
+    region: virginia         # mesma região do banco no Neon (aws us-east-1) — cada consulta cruza a rede
+    buildCommand: ./build.sh
+    startCommand: gunicorn config.wsgi:application --workers 2 --timeout 60
+    healthCheckPath: /contas/login/
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false          # colar a connection string do Neon
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false          # ex.: https://studiofitness.com.br
+      - key: ALLOWED_HOSTS
+        sync: false          # ex.: studiofitness.com.br,www.studiofitness.com.br

@@ -1,0 +1,6 @@
+Django>=5.2,<5.3        # LTS, suporte até abr/2028
+dj-database-url>=3.0
+psycopg[binary]>=3.2
+whitenoise>=6.9
+gunicorn>=23.0
+python-dotenv>=1.0
