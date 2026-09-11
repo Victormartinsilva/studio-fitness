@@ -11,7 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-chave-de-desenvolvimento-trocar")
+SECRET_KEY = os.environ.get("SECRET_KEY") or "django-insecure-chave-de-desenvolvimento-trocar"
 
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 
@@ -22,7 +22,7 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # Granularidade das sugestões de horário (minutos)
-AGENDA_PASSO_MINUTOS = int(os.environ.get("AGENDA_PASSO_MINUTOS", "5"))
+AGENDA_PASSO_MINUTOS = int(os.environ.get("AGENDA_PASSO_MINUTOS") or "5")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
