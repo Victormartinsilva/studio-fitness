@@ -1,40 +1,41 @@
 {% extends "base.html" %}
 {% block title %}Equipamentos — Studio Fitness{% endblock %}
 {% block content %}
-<h1>Equipamentos</h1>
+<div class="linha-titulo">
+    <h1>Equipamentos</h1>
+    <p class="sub">{{ itens|length }} cadastrados</p>
+</div>
 
-<div class="card">
+<div class="card" style="margin-bottom:16px">
     <h2>{% if editando %}Editar equipamento{% else %}Novo equipamento{% endif %}</h2>
-    <form method="post">
+    <form method="post" class="form">
         {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Salvar</button>
-        {% if editando %}<a href="{% url 'cadastros:equipamentos' %}">Cancelar</a>{% endif %}
+        <div class="form-2col">{{ form.as_p }}</div>
+        <div class="acoes-form">
+            <button type="submit">Salvar</button>
+            {% if editando %}<a class="btn btn-secundario" href="{% url 'cadastros:equipamentos' %}">Cancelar</a>{% endif %}
+        </div>
     </form>
 </div>
 
-<div class="card">
-    <table style="width:100%;border-collapse:collapse;">
-        <thead>
-            <tr><th style="text-align:left;">Nome</th><th style="text-align:left;">Status</th><th></th></tr>
-        </thead>
-        <tbody>
-            {% for equipamento in itens %}
-            <tr>
-                <td>{{ equipamento.nome }}</td>
-                <td>{{ equipamento.get_status_display }}</td>
-                <td>
-                    <a href="{% url 'cadastros:equipamentos_editar' equipamento.pk %}">Editar</a>
-                    <form method="post" action="{% url 'cadastros:equipamentos_editar' equipamento.pk %}" style="display:inline" onsubmit="return confirm('Excluir este equipamento?');">
-                        {% csrf_token %}
-                        <button type="submit" name="_excluir" value="1" style="background:none;border:none;color:#c0392b;cursor:pointer;">Excluir</button>
-                    </form>
-                </td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="3">Nenhum equipamento cadastrado.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="lista">
+    {% for equipamento in itens %}
+    <div class="item">
+        <div class="corpo">
+            <span class="titulo">{{ equipamento.nome }}</span>
+            {% if equipamento.observacoes %}<span class="meta">{{ equipamento.observacoes }}</span>{% endif %}
+        </div>
+        <div class="acoes">
+            <span class="tag {% if equipamento.status == 'ativo' %}ok{% elif equipamento.status == 'manutencao' %}aviso{% else %}off{% endif %}">{{ equipamento.get_status_display }}</span>
+            <a class="btn btn-secundario btn-sm" href="{% url 'cadastros:equipamentos_editar' equipamento.pk %}">Editar</a>
+            <form method="post" action="{% url 'cadastros:equipamentos_editar' equipamento.pk %}" onsubmit="return confirm('Excluir este equipamento?');">
+                {% csrf_token %}
+                <button type="submit" name="_excluir" value="1" class="btn-perigo">Excluir</button>
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    <div class="card vazio">Nenhum equipamento cadastrado.</div>
+    {% endfor %}
 </div>
 {% endblock %}

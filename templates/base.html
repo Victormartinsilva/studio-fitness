@@ -4,148 +4,48 @@
 <head>
     <meta charset="UTF-8">
     <title>{% block title %}Studio Fitness{% endblock %}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#6f2a86">
     <link rel="icon" type="image/png" href="{% static 'img/logo.png' %}">
-    <style>
-        :root {
-            --roxo: #6f2a86;
-            --verde: #7cb342;
-            --cinza-fundo: #f5f5f5;
-            --cinza-texto: #444;
-        }
-        * { box-sizing: border-box; }
-        body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background: var(--cinza-fundo); color: #222; }
-        header {
-            background: #fff; border-bottom: 3px solid var(--roxo);
-            padding: .6rem 1.5rem; display: flex; flex-wrap: wrap; align-items: center;
-            justify-content: space-between; gap: .5rem; position: sticky; top: 0; z-index: 10;
-        }
-        .marca { display: flex; align-items: center; gap: .5rem; text-decoration: none; margin-right: .5rem; }
-        .marca img { height: 40px; display: block; }
-        nav { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
-        nav a { color: var(--roxo); text-decoration: none; font-weight: 600; font-size: .95rem; }
-        nav a:hover { color: var(--verde); }
-        .usuario { display: flex; align-items: center; gap: .75rem; font-size: .9rem; color: var(--cinza-texto); }
-        .usuario button {
-            background: none; border: 1px solid #ccc; border-radius: 4px; padding: .3rem .6rem;
-            color: var(--cinza-texto); cursor: pointer; font-size: .85rem;
-        }
-        .usuario button:hover { border-color: var(--roxo); color: var(--roxo); }
-        main { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
-        h1 { color: var(--roxo); }
-        .card { background: #fff; border-radius: 8px; padding: 1rem 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-        .alerta { padding: .5rem .75rem; border-left: 4px solid var(--verde); background: #f1f8e9; margin-bottom: .5rem; border-radius: 4px; }
-        .messages { list-style: none; padding: 0; margin: 0 0 1rem 0; }
-        .messages li { padding: .5rem .75rem; border-radius: 4px; margin-bottom: .5rem; background: #dff5e1; }
-        button[type="submit"], input[type="submit"] {
-            background: var(--roxo); color: #fff; border: none; border-radius: 4px;
-            padding: .5rem 1.2rem; font-size: .95rem; cursor: pointer;
-        }
-        button[type="submit"]:hover, input[type="submit"]:hover { background: #5a2170; }
-
-        /* Cabeçalho de tela de lista (título + ação principal) */
-        .cabecalho-lista { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
-        .cabecalho-lista h1 { margin: 0; }
-
-        .botao-primario {
-            background: var(--roxo); color: #fff; padding: .5rem 1rem; border-radius: 6px;
-            text-decoration: none; font-weight: 600; font-size: .9rem; white-space: nowrap; display: inline-block;
-        }
-        .botao-primario:hover { background: #5a2170; }
-        .botao-fab {
-            width: 2.4rem; height: 2.4rem; border-radius: 50%; background: var(--roxo); color: #fff;
-            display: flex; align-items: center; justify-content: center; font-size: 1.5rem; line-height: 1;
-            text-decoration: none; box-shadow: 0 2px 6px rgba(0,0,0,.2); flex-shrink: 0;
-        }
-        .botao-fab:hover { background: #5a2170; }
-        .link-perigo { background: none; border: none; color: #c0392b; cursor: pointer; text-decoration: underline; font-size: .85rem; padding: 0; }
-
-        /* Modal (tela de adicionar/editar sobre a lista), sem depender de JS */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 20; }
-        dialog { border: none; border-radius: 8px; padding: 0; margin: 0; }
-        dialog:not([open]) { display: none; }
-        dialog[open] {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 21; width: min(480px, 92vw); max-height: 90vh; overflow: auto;
-            padding: 1.5rem; box-shadow: 0 12px 40px rgba(0,0,0,.25);
-        }
-        .modal-cabecalho { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-        .modal-cabecalho h2 { margin: 0; }
-        .modal-fechar { color: #888; text-decoration: none; font-size: 1.3rem; line-height: 1; }
-        .modal-acoes { display: flex; gap: .75rem; margin-top: 1rem; align-items: center; }
-
-        /* Formulário alinhado em grade: rótulo à esquerda, campo à direita */
-        .form-grade { display: grid; grid-template-columns: 140px 1fr; gap: .6rem 1rem; align-items: center; }
-        .form-grade label { font-weight: 600; font-size: .9rem; color: var(--cinza-texto); }
-        .form-grade input:not([type="checkbox"]), .form-grade select, .form-grade textarea {
-            width: 100%; padding: .4rem .5rem; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; font-size: .95rem;
-        }
-        .form-grade input[type="checkbox"] { width: 1.1rem; height: 1.1rem; }
-        .errorlist { list-style: none; margin: .25rem 0 0; padding: 0; color: #c0392b; font-size: .8rem; }
-        @media (max-width: 480px) {
-            .form-grade { grid-template-columns: 1fr; }
-        }
-
-        /* Agenda visual: sessões agrupadas por dia */
-        .dia-agenda { padding: 0; overflow: hidden; }
-        .dia-agenda-cabecalho {
-            display: flex; align-items: center; gap: .6rem; padding: .75rem 1.25rem;
-            background: #faf7fb; border-bottom: 1px solid #eee; font-size: .95rem;
-        }
-        .sessao-item {
-            display: flex; align-items: center; gap: 1rem; padding: .75rem 1.25rem;
-            border-left: 4px solid #ccc; border-bottom: 1px solid #f0f0f0; flex-wrap: wrap;
-        }
-        .sessao-item:last-child { border-bottom: none; }
-        .sessao-agendada { border-left-color: #2b5fc7; }
-        .sessao-confirmada { border-left-color: var(--verde); }
-        .sessao-realizada { border-left-color: #999; }
-        .sessao-faltou { border-left-color: #c0392b; }
-        .sessao-horario { font-weight: 700; color: var(--roxo); min-width: 100px; }
-        .sessao-info { flex: 1; min-width: 160px; }
-        .sessao-detalhe { font-size: .85rem; color: var(--cinza-texto); }
-        .status-pill { display: inline-block; padding: .15rem .6rem; border-radius: 999px; font-size: .78rem; font-weight: 600; white-space: nowrap; }
-        .status-agendada { background: #e8eefc; color: #2b5fc7; }
-        .status-confirmada { background: #eaf6e5; color: #4b8a1f; }
-        .status-realizada { background: #eee; color: #666; }
-        .status-faltou { background: #fdecea; color: #c0392b; }
-        @media (max-width: 600px) {
-            header { justify-content: center; text-align: center; }
-            nav { justify-content: center; }
-            main { margin: 1rem auto; }
-            .sessao-item { flex-direction: column; align-items: flex-start; }
-        }
-    </style>
+    <link rel="apple-touch-icon" href="{% static 'img/logo.png' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 <body>
-    <header>
+    <header class="topbar">
         <a class="marca" href="{% url 'painel:home' %}">
             <img src="{% static 'img/logo.png' %}" alt="Studio Fitness">
         </a>
         {% if request.user.is_authenticated %}
-        <nav>
-            <a href="{% url 'agenda:minhas_sessoes' %}">Agenda</a>
+        <nav class="nav-desktop">
+            <a href="{% url 'painel:home' %}" class="{% if aba == 'inicio' %}ativo{% endif %}">Início</a>
+            <a href="{% url 'agenda:minhas_sessoes' %}" class="{% if aba == 'agenda' %}ativo{% endif %}">Agenda</a>
             {% if request.user.is_superuser or request.user.is_gestor %}
-                <a href="{% url 'cadastros:alunos' %}">Alunos</a>
-                <a href="{% url 'cadastros:equipamentos' %}">Equipamentos</a>
-                <a href="{% url 'cadastros:tipos_sessao' %}">Tipos de sessão</a>
-                <a href="{% url 'planos:planos' %}">Planos</a>
-                <a href="{% url 'planos:contratacoes' %}">Contratações</a>
+            <a href="{% url 'cadastros:alunos' %}" class="{% if aba == 'alunos' %}ativo{% endif %}">Alunos</a>
+            <a href="{% url 'cadastros:equipamentos' %}" class="{% if aba == 'equipamentos' %}ativo{% endif %}">Equipamentos</a>
+            <a href="{% url 'cadastros:tipos_sessao' %}" class="{% if aba == 'tipos' %}ativo{% endif %}">Tipos de sessão</a>
+            <a href="{% url 'planos:planos' %}" class="{% if aba == 'planos' %}ativo{% endif %}">Planos</a>
+            <a href="{% url 'planos:contratacoes' %}" class="{% if aba == 'contratacoes' %}ativo{% endif %}">Contratações</a>
             {% endif %}
         </nav>
         {% endif %}
+        <span class="espaco"></span>
         <div class="usuario">
             {% if request.user.is_authenticated %}
-                <span>{{ request.user.first_name|default:request.user.username }}</span>
-                <form method="post" action="{% url 'contas:logout' %}" style="display:inline">
+                <span class="nome">{{ request.user.first_name|default:request.user.username }}</span>
+                <span class="avatar">{{ request.user.first_name|default:request.user.username|slice:":2"|upper }}</span>
+                <form method="post" action="{% url 'contas:logout' %}">
                     {% csrf_token %}
-                    <button type="submit">Sair</button>
+                    <button type="submit" class="btn-sair">Sair</button>
                 </form>
             {% else %}
                 <a href="{% url 'contas:login' %}">Entrar</a>
             {% endif %}
         </div>
     </header>
+
     <main>
         {% if messages %}
         <ul class="messages">
@@ -154,5 +54,16 @@
         {% endif %}
         {% block content %}{% endblock %}
     </main>
+
+    {% if request.user.is_authenticated %}
+    <nav class="tabs" style="grid-template-columns: repeat({% if request.user.is_superuser or request.user.is_gestor %}4{% else %}2{% endif %}, 1fr)">
+        <a href="{% url 'painel:home' %}" class="{% if aba == 'inicio' %}ativo{% endif %}">Início</a>
+        <a href="{% url 'agenda:minhas_sessoes' %}" class="{% if aba == 'agenda' %}ativo{% endif %}">Agenda</a>
+        {% if request.user.is_superuser or request.user.is_gestor %}
+        <a href="{% url 'cadastros:alunos' %}" class="{% if aba == 'alunos' %}ativo{% endif %}">Alunos</a>
+        <a href="{% url 'planos:planos' %}" class="{% if aba == 'planos' or aba == 'contratacoes' %}ativo{% endif %}">Planos</a>
+        {% endif %}
+    </nav>
+    {% endif %}
 </body>
 </html>

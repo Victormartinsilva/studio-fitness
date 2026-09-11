@@ -1,42 +1,46 @@
 {% extends "base.html" %}
 {% block title %}Contratações — Studio Fitness{% endblock %}
 {% block content %}
-<h1>Contratações</h1>
+<div class="linha-titulo">
+    <h1>Contratações</h1>
+</div>
 
-<div class="card">
+<div class="abas" style="max-width:360px;margin-bottom:16px">
+    <a href="{% url 'planos:planos' %}">Planos</a>
+    <a href="{% url 'planos:contratacoes' %}" class="ativo">Contratações</a>
+</div>
+
+<div class="card" style="margin-bottom:16px">
     <h2>{% if editando %}Editar contratação{% else %}Nova contratação{% endif %}</h2>
-    <form method="post">
+    <form method="post" class="form">
         {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Salvar</button>
-        {% if editando %}<a href="{% url 'planos:contratacoes' %}">Cancelar</a>{% endif %}
+        <div class="form-2col">{{ form.as_p }}</div>
+        <div class="acoes-form">
+            <button type="submit">Salvar</button>
+            {% if editando %}<a class="btn btn-secundario" href="{% url 'planos:contratacoes' %}">Cancelar</a>{% endif %}
+        </div>
     </form>
 </div>
 
-<div class="card">
-    <table style="width:100%;border-collapse:collapse;">
-        <thead>
-            <tr><th style="text-align:left;">Aluno</th><th style="text-align:left;">Plano</th><th style="text-align:left;">Início</th><th style="text-align:left;">Status</th><th></th></tr>
-        </thead>
-        <tbody>
-            {% for contratacao in itens %}
-            <tr>
-                <td>{{ contratacao.aluno }}</td>
-                <td>{{ contratacao.plano }}</td>
-                <td>{{ contratacao.data_inicio|date:"d/m/Y" }}</td>
-                <td>{{ contratacao.get_status_display }}</td>
-                <td>
-                    <a href="{% url 'planos:contratacoes_editar' contratacao.pk %}">Editar</a>
-                    <form method="post" action="{% url 'planos:contratacoes_editar' contratacao.pk %}" style="display:inline" onsubmit="return confirm('Excluir esta contratação?');">
-                        {% csrf_token %}
-                        <button type="submit" name="_excluir" value="1" style="background:none;border:none;color:#c0392b;cursor:pointer;">Excluir</button>
-                    </form>
-                </td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="5">Nenhuma contratação cadastrada.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="lista">
+    {% for contratacao in itens %}
+    <div class="item">
+        <span class="iniciais">{{ contratacao.aluno.nome|slice:":2"|upper }}</span>
+        <div class="corpo">
+            <span class="titulo">{{ contratacao.aluno }}</span>
+            <span class="meta">{{ contratacao.plano }} · desde {{ contratacao.data_inicio|date:"d/m/Y" }}</span>
+        </div>
+        <div class="acoes">
+            <span class="tag {% if contratacao.status == 'ativa' %}ok{% elif contratacao.status == 'suspensa' %}aviso{% else %}off{% endif %}">{{ contratacao.get_status_display }}</span>
+            <a class="btn btn-secundario btn-sm" href="{% url 'planos:contratacoes_editar' contratacao.pk %}">Editar</a>
+            <form method="post" action="{% url 'planos:contratacoes_editar' contratacao.pk %}" onsubmit="return confirm('Excluir esta contratação?');">
+                {% csrf_token %}
+                <button type="submit" name="_excluir" value="1" class="btn-perigo">Excluir</button>
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    <div class="card vazio">Nenhuma contratação cadastrada.</div>
+    {% endfor %}
 </div>
 {% endblock %}

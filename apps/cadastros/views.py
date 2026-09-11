@@ -7,7 +7,7 @@ from .forms import AlunoForm, EquipamentoForm, TipoSessaoForm
 from .models import Aluno, Equipamento, TipoSessao
 
 
-def _crud_simples(request, model, form_class, template, url_name, pk=None):
+def _crud_simples(request, model, form_class, template, url_name, aba, pk=None):
     """Lida com list+create+update+delete de um cadastro simples (mesmo padrão para os 3)."""
     instancia = get_object_or_404(model, pk=pk) if pk else None
 
@@ -26,23 +26,25 @@ def _crud_simples(request, model, form_class, template, url_name, pk=None):
         form = form_class(instance=instancia)
 
     itens = model.objects.all()
-    return render(request, template, {"form": form, "itens": itens, "editando": instancia})
+    return render(request, template, {"form": form, "itens": itens, "editando": instancia, "aba": aba})
 
 
 @gestor_required
 def alunos(request, pk=None):
-    return _crud_simples(request, Aluno, AlunoForm, "cadastros/alunos.html", "cadastros:alunos", pk)
+    return _crud_simples(request, Aluno, AlunoForm, "cadastros/alunos.html", "cadastros:alunos", "alunos", pk)
 
 
 @gestor_required
 def equipamentos(request, pk=None):
     return _crud_simples(
-        request, Equipamento, EquipamentoForm, "cadastros/equipamentos.html", "cadastros:equipamentos", pk
+        request, Equipamento, EquipamentoForm, "cadastros/equipamentos.html", "cadastros:equipamentos",
+        "equipamentos", pk,
     )
 
 
 @gestor_required
 def tipos_sessao(request, pk=None):
     return _crud_simples(
-        request, TipoSessao, TipoSessaoForm, "cadastros/tipos_sessao.html", "cadastros:tipos_sessao", pk
+        request, TipoSessao, TipoSessaoForm, "cadastros/tipos_sessao.html", "cadastros:tipos_sessao",
+        "tipos", pk,
     )

@@ -44,6 +44,10 @@ class TipoSessao(models.Model):
     def __str__(self):
         return self.nome
 
+    @property
+    def reserva_total(self):
+        return self.preparo_min + self.duracao_min + self.troca_min
+
 
 class Professor(models.Model):
     usuario = models.OneToOneField(

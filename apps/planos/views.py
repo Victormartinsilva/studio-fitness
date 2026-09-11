@@ -26,7 +26,9 @@ def planos(request, pk=None):
         form = PlanoForm(instance=instancia)
 
     itens = Plano.objects.all()
-    return render(request, "planos/planos.html", {"form": form, "itens": itens, "editando": instancia})
+    return render(
+        request, "planos/planos.html", {"form": form, "itens": itens, "editando": instancia, "aba": "planos"}
+    )
 
 
 @gestor_required
@@ -49,5 +51,7 @@ def contratacoes(request, pk=None):
 
     itens = Contratacao.objects.select_related("aluno", "plano").all()
     return render(
-        request, "planos/contratacoes.html", {"form": form, "itens": itens, "editando": instancia}
+        request,
+        "planos/contratacoes.html",
+        {"form": form, "itens": itens, "editando": instancia, "aba": "contratacoes"},
     )

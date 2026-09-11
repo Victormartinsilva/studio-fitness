@@ -1,13 +1,32 @@
 {% extends "base.html" %}
 {% block title %}Agendar sessão — Studio Fitness{% endblock %}
 {% block content %}
-<h1>Agendar sessão</h1>
-<div class="card" style="max-width:480px;">
-    <form method="post">
+<div class="linha-titulo">
+    <h1>Nova sessão</h1>
+</div>
+
+<div class="card" style="max-width:560px">
+    <form method="post" class="form">
         {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Agendar</button>
-        <a href="{% url 'agenda:minhas_sessoes' %}">Cancelar</a>
+        {% if form.non_field_errors %}
+        <div class="alerta critico" style="margin-bottom:12px">
+            {% for erro in form.non_field_errors %}<span style="font-weight:600;font-size:14px">{{ erro }}</span>{% endfor %}
+            <span class="detalhe">Escolha outro horário, equipamento ou professor.</span>
+        </div>
+        {% endif %}
+        <p>{{ form.tipo.label_tag }}{{ form.tipo }}{% if form.tipo.errors %}{{ form.tipo.errors }}{% endif %}</p>
+        <div class="form-2col">
+            <p>{{ form.aluno.label_tag }}{{ form.aluno }}{{ form.aluno.errors }}</p>
+            <p>{{ form.professor.label_tag }}{{ form.professor }}{{ form.professor.errors }}</p>
+            <p>{{ form.data.label_tag }}{{ form.data }}{{ form.data.errors }}</p>
+            <p>{{ form.hora_inicio.label_tag }}{{ form.hora_inicio }}{{ form.hora_inicio.errors }}</p>
+        </div>
+        <p>{{ form.equipamento.label_tag }}{{ form.equipamento }}{{ form.equipamento.errors }}</p>
+        <p class="sub" style="margin:0 0 12px">O equipamento fica reservado além do horário da sessão: o preparo entra antes e a troca depois, conforme o tipo de sessão.</p>
+        <div class="acoes-form">
+            <button type="submit" class="btn">Agendar</button>
+            <a class="btn btn-secundario" href="{% url 'agenda:minhas_sessoes' %}">Cancelar</a>
+        </div>
     </form>
 </div>
 {% endblock %}

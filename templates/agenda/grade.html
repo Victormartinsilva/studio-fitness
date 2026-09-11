@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Agenda — Studio Fitness{% endblock %}
+{% block content %}
+<div class="linha-titulo">
+    <h1>{{ data|date:"l, j \\d\\e F" }}</h1>
+    <a class="btn btn-secundario btn-sm" href="?data={{ dia_anterior|date:'Y-m-d' }}">‹</a>
+    <a class="btn btn-secundario btn-sm" href="?data={{ dia_seguinte|date:'Y-m-d' }}">›</a>
+    <p class="sub">{{ total_sessoes }} sessões · ocupação {{ ocupacao }}%</p>
+    <span class="espaco"></span>
+    {% if pode_agendar %}<a class="btn btn-sm" href="{% url 'agenda:agendar' %}?data={{ data|date:'Y-m-d' }}">+ Agendar sessão</a>{% endif %}
+</div>
+
+<div class="faixa-dias" style="margin-bottom:12px">
+    {% for dia in semana %}
+    <a href="?data={{ dia.data|date:'Y-m-d' }}" class="{% if dia.selecionado %}hoje{% endif %}">
+        <span class="dia">{{ dia.data|date:"D" }}</span>
+        <span class="num">{{ dia.data|date:"d" }}</span>
+    </a>
+    {% endfor %}
+</div>
+
+<div class="grade">
+    <div class="horas">
+        {% for hora in horas %}
+        <div class="hora" style="height:{{ altura_hora }}px">{{ hora }}</div>
+        {% endfor %}
+    </div>
+    <div class="colunas">
+        {% for coluna in colunas %}
+        <div class="coluna">
+            <div class="cabeca">
+                {{ coluna.equipamento.nome }}
+                {% if coluna.equipamento.status == 'ativo' %}
+                <span class="tag ok">livre</span>
+                {% else %}
+                <span class="tag aviso">{{ coluna.equipamento.get_status_display|lower }}</span>
+                {% endif %}
+            </div>
+            <div class="pista" style="height:{{ altura_pista }}px;background:repeating-linear-gradient(to bottom, #fff 0 {{ altura_hora_menos1 }}px, #f3eef6 {{ altura_hora_menos1 }}px {{ altura_hora }}px)">
+                {% for b in coluna.blocos %}
+                <div class="bloco {{ b.classe }}" style="top:{{ b.top }}px;height:{{ b.altura }}px">
+                    {% if b.titulo %}<div class="quem">{{ b.titulo }}</div>{% endif %}
+                    {% if b.subtitulo %}<div class="quem2">{{ b.subtitulo }}</div>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="vazio" style="flex:1">Nenhum equipamento cadastrado.</div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="legenda">
+    <span class="item-legenda"><i class="sessao"></i>Sessão</span>
+    <span class="item-legenda"><i class="preparo"></i>Preparo / troca do equipamento</span>
+    <span class="item-legenda"><i class="bloqueio"></i>Bloqueio</span>
+</div>
+{% endblock %}

@@ -2,13 +2,16 @@
 {% load static %}
 {% block title %}Entrar — Studio Fitness{% endblock %}
 {% block content %}
-<div class="card" style="max-width:360px;margin:3rem auto;text-align:center;">
-    <img src="{% static 'img/logo.png' %}" alt="Studio Fitness" style="max-width:220px;width:100%;margin-bottom:1rem;">
-    <h1 style="text-align:left;">Entrar</h1>
-    <form method="post" style="text-align:left;">
+<div class="login">
+    <img class="logo" src="{% static 'img/logo.png' %}" alt="Studio Fitness">
+    <div>
+        <h1 style="margin-bottom:4px">Entrar</h1>
+        <p class="sub">Acesse sua agenda do studio.</p>
+    </div>
+    <form method="post" class="form">
         {% csrf_token %}
         {{ form.as_p }}
-        <button type="submit">Entrar</button>
+        <button type="submit" class="btn btn-bloco">Entrar</button>
     </form>
 </div>
 {% endblock %}

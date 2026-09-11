@@ -1,42 +1,35 @@
 {% extends "base.html" %}
 {% block title %}Minhas sessões — Studio Fitness{% endblock %}
 {% block content %}
-<div class="cabecalho-lista">
+<div class="linha-titulo">
     <h1>Minhas sessões</h1>
-    {% if pode_agendar %}
-    <a class="botao-primario" href="{% url 'agenda:agendar' %}">+ Agendar sessão</a>
-    {% endif %}
+    <span class="espaco"></span>
+    <a class="btn btn-secundario btn-sm" href="{% url 'agenda:grade' %}">Ver grade do dia</a>
+    {% if pode_agendar %}<a class="btn btn-sm" href="{% url 'agenda:agendar' %}">+ Agendar</a>{% endif %}
 </div>
 
-{% if sessoes %}
-    {% regroup sessoes by inicio.date as sessoes_por_dia %}
-    {% for dia in sessoes_por_dia %}
-    <div class="card dia-agenda">
-        <div class="dia-agenda-cabecalho">
-            <strong>{{ dia.grouper|date:"l"|capfirst }}, {{ dia.grouper|date:"d/m/Y" }}</strong>
-            {% if dia.grouper == hoje %}<span class="status-pill status-confirmada">Hoje</span>{% endif %}
+<div class="lista">
+    {% for sessao in sessoes %}
+    <div class="item">
+        <div class="corpo">
+            <span class="titulo">{{ sessao.inicio|date:"d/m" }} · {{ sessao.inicio|date:"H:i" }} – {{ sessao.fim|date:"H:i" }} · {{ sessao.aluno }}</span>
+            <span class="meta">{{ sessao.professor }} · {{ sessao.tipo }}{% if sessao.equipamento %} · {{ sessao.equipamento }}{% endif %}</span>
+            {% if sessao.equipamento %}
+            <span class="meta">Equipamento reservado {{ sessao.reserva_inicio|date:"H:i" }} – {{ sessao.reserva_fim|date:"H:i" }}</span>
+            {% endif %}
         </div>
-        {% for sessao in dia.list %}
-        <div class="sessao-item sessao-{{ sessao.status }}">
-            <div class="sessao-horario">{{ sessao.inicio|date:"H:i" }}–{{ sessao.fim|date:"H:i" }}</div>
-            <div class="sessao-info">
-                <div><strong>{{ sessao.aluno }}</strong> com {{ sessao.professor }}</div>
-                <div class="sessao-detalhe">
-                    {{ sessao.tipo }}{% if sessao.equipamento %} · {{ sessao.equipamento }}{% endif %}
-                </div>
-            </div>
-            <span class="status-pill status-{{ sessao.status }}">{{ sessao.get_status_display }}</span>
+        <div class="acoes">
+            <span class="tag {% if sessao.status == 'confirmada' or sessao.status == 'realizada' %}ok{% elif sessao.status == 'faltou' %}aviso{% endif %}">{{ sessao.get_status_display }}</span>
             {% if pode_agendar %}
             <form method="post" action="{% url 'agenda:cancelar' sessao.pk %}" onsubmit="return confirm('Cancelar esta sessão?');">
                 {% csrf_token %}
-                <button type="submit" class="link-perigo">Cancelar</button>
+                <button type="submit" class="btn-perigo">Cancelar</button>
             </form>
             {% endif %}
         </div>
-        {% endfor %}
     </div>
+    {% empty %}
+    <div class="card vazio">Nenhuma sessão agendada.</div>
     {% endfor %}
-{% else %}
-    <div class="card"><p>Nenhuma sessão agendada.</p></div>
-{% endif %}
+</div>
 {% endblock %}
