@@ -42,10 +42,78 @@
             padding: .5rem 1.2rem; font-size: .95rem; cursor: pointer;
         }
         button[type="submit"]:hover, input[type="submit"]:hover { background: #5a2170; }
+
+        /* Cabeçalho de tela de lista (título + ação principal) */
+        .cabecalho-lista { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+        .cabecalho-lista h1 { margin: 0; }
+
+        .botao-primario {
+            background: var(--roxo); color: #fff; padding: .5rem 1rem; border-radius: 6px;
+            text-decoration: none; font-weight: 600; font-size: .9rem; white-space: nowrap; display: inline-block;
+        }
+        .botao-primario:hover { background: #5a2170; }
+        .botao-fab {
+            width: 2.4rem; height: 2.4rem; border-radius: 50%; background: var(--roxo); color: #fff;
+            display: flex; align-items: center; justify-content: center; font-size: 1.5rem; line-height: 1;
+            text-decoration: none; box-shadow: 0 2px 6px rgba(0,0,0,.2); flex-shrink: 0;
+        }
+        .botao-fab:hover { background: #5a2170; }
+        .link-perigo { background: none; border: none; color: #c0392b; cursor: pointer; text-decoration: underline; font-size: .85rem; padding: 0; }
+
+        /* Modal (tela de adicionar/editar sobre a lista), sem depender de JS */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 20; }
+        dialog { border: none; border-radius: 8px; padding: 0; margin: 0; }
+        dialog:not([open]) { display: none; }
+        dialog[open] {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 21; width: min(480px, 92vw); max-height: 90vh; overflow: auto;
+            padding: 1.5rem; box-shadow: 0 12px 40px rgba(0,0,0,.25);
+        }
+        .modal-cabecalho { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .modal-cabecalho h2 { margin: 0; }
+        .modal-fechar { color: #888; text-decoration: none; font-size: 1.3rem; line-height: 1; }
+        .modal-acoes { display: flex; gap: .75rem; margin-top: 1rem; align-items: center; }
+
+        /* Formulário alinhado em grade: rótulo à esquerda, campo à direita */
+        .form-grade { display: grid; grid-template-columns: 140px 1fr; gap: .6rem 1rem; align-items: center; }
+        .form-grade label { font-weight: 600; font-size: .9rem; color: var(--cinza-texto); }
+        .form-grade input:not([type="checkbox"]), .form-grade select, .form-grade textarea {
+            width: 100%; padding: .4rem .5rem; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; font-size: .95rem;
+        }
+        .form-grade input[type="checkbox"] { width: 1.1rem; height: 1.1rem; }
+        .errorlist { list-style: none; margin: .25rem 0 0; padding: 0; color: #c0392b; font-size: .8rem; }
+        @media (max-width: 480px) {
+            .form-grade { grid-template-columns: 1fr; }
+        }
+
+        /* Agenda visual: sessões agrupadas por dia */
+        .dia-agenda { padding: 0; overflow: hidden; }
+        .dia-agenda-cabecalho {
+            display: flex; align-items: center; gap: .6rem; padding: .75rem 1.25rem;
+            background: #faf7fb; border-bottom: 1px solid #eee; font-size: .95rem;
+        }
+        .sessao-item {
+            display: flex; align-items: center; gap: 1rem; padding: .75rem 1.25rem;
+            border-left: 4px solid #ccc; border-bottom: 1px solid #f0f0f0; flex-wrap: wrap;
+        }
+        .sessao-item:last-child { border-bottom: none; }
+        .sessao-agendada { border-left-color: #2b5fc7; }
+        .sessao-confirmada { border-left-color: var(--verde); }
+        .sessao-realizada { border-left-color: #999; }
+        .sessao-faltou { border-left-color: #c0392b; }
+        .sessao-horario { font-weight: 700; color: var(--roxo); min-width: 100px; }
+        .sessao-info { flex: 1; min-width: 160px; }
+        .sessao-detalhe { font-size: .85rem; color: var(--cinza-texto); }
+        .status-pill { display: inline-block; padding: .15rem .6rem; border-radius: 999px; font-size: .78rem; font-weight: 600; white-space: nowrap; }
+        .status-agendada { background: #e8eefc; color: #2b5fc7; }
+        .status-confirmada { background: #eaf6e5; color: #4b8a1f; }
+        .status-realizada { background: #eee; color: #666; }
+        .status-faltou { background: #fdecea; color: #c0392b; }
         @media (max-width: 600px) {
             header { justify-content: center; text-align: center; }
             nav { justify-content: center; }
             main { margin: 1rem auto; }
+            .sessao-item { flex-direction: column; align-items: flex-start; }
         }
     </style>
 </head>

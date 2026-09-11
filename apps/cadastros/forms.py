@@ -7,6 +7,7 @@ class AlunoForm(forms.ModelForm):
     class Meta:
         model = Aluno
         fields = ["nome", "telefone", "email", "observacoes", "ativo"]
+        widgets = {"observacoes": forms.Textarea(attrs={"rows": 3})}
 
 
 class EquipamentoForm(forms.ModelForm):

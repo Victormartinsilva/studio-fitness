@@ -25,7 +25,11 @@ def minhas_sessoes(request):
     return render(
         request,
         "agenda/minhas_sessoes.html",
-        {"sessoes": sessoes.select_related("professor__usuario", "aluno", "equipamento"), "pode_agendar": pode_agendar},
+        {
+            "sessoes": sessoes.select_related("professor__usuario", "aluno", "equipamento"),
+            "pode_agendar": pode_agendar,
+            "hoje": timezone.localdate(),
+        },
     )
 
 

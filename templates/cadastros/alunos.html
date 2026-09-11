@@ -1,42 +1,68 @@
 {% extends "base.html" %}
 {% block title %}Alunos — Studio Fitness{% endblock %}
 {% block content %}
-<h1>Alunos</h1>
-
-<div class="card">
-    <h2>{% if editando %}Editar aluno{% else %}Novo aluno{% endif %}</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Salvar</button>
-        {% if editando %}<a href="{% url 'cadastros:alunos' %}">Cancelar</a>{% endif %}
-    </form>
+<div class="cabecalho-lista">
+    <h1>Alunos</h1>
+    <a class="botao-fab" href="{% url 'cadastros:alunos' %}?novo=1" title="Novo aluno">+</a>
 </div>
 
-<div class="card">
+<div class="card" style="padding:0;">
     <table style="width:100%;border-collapse:collapse;">
         <thead>
-            <tr><th style="text-align:left;">Nome</th><th style="text-align:left;">Telefone</th><th style="text-align:left;">E-mail</th><th style="text-align:left;">Ativo</th><th></th></tr>
+            <tr>
+                <th style="text-align:left;padding:.75rem 1.25rem;">Nome</th>
+                <th style="text-align:left;padding:.75rem;">Telefone</th>
+                <th style="text-align:left;padding:.75rem;">E-mail</th>
+                <th style="text-align:left;padding:.75rem;">Ativo</th>
+                <th style="padding:.75rem 1.25rem;"></th>
+            </tr>
         </thead>
         <tbody>
             {% for aluno in itens %}
-            <tr>
-                <td>{{ aluno.nome }}</td>
-                <td>{{ aluno.telefone }}</td>
-                <td>{{ aluno.email }}</td>
-                <td>{{ aluno.ativo|yesno:"Sim,Não" }}</td>
-                <td>
+            <tr style="border-top:1px solid #f0f0f0;">
+                <td style="padding:.75rem 1.25rem;">{{ aluno.nome }}</td>
+                <td style="padding:.75rem;">{{ aluno.telefone|default:"—" }}</td>
+                <td style="padding:.75rem;">{{ aluno.email|default:"—" }}</td>
+                <td style="padding:.75rem;">{{ aluno.ativo|yesno:"Sim,Não" }}</td>
+                <td style="padding:.75rem 1.25rem;text-align:right;white-space:nowrap;">
                     <a href="{% url 'cadastros:alunos_editar' aluno.pk %}">Editar</a>
                     <form method="post" action="{% url 'cadastros:alunos_editar' aluno.pk %}" style="display:inline" onsubmit="return confirm('Excluir este aluno?');">
                         {% csrf_token %}
-                        <button type="submit" name="_excluir" value="1" style="background:none;border:none;color:#c0392b;cursor:pointer;">Excluir</button>
+                        <button type="submit" name="_excluir" value="1" class="link-perigo">Excluir</button>
                     </form>
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="5">Nenhum aluno cadastrado.</td></tr>
+            <tr><td colspan="5" style="padding:1.5rem 1.25rem;color:#777;">Nenhum aluno cadastrado. Clique em “+” para adicionar o primeiro.</td></tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+
+{% if editando or request.GET.novo %}
+<div class="modal-overlay"></div>
+<dialog open>
+    <div class="modal-cabecalho">
+        <h2>{% if editando %}Editar aluno{% else %}Novo aluno{% endif %}</h2>
+        <a class="modal-fechar" href="{% url 'cadastros:alunos' %}" title="Fechar">×</a>
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-grade">
+            {% for field in form %}
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                <div>
+                    {{ field }}
+                    {{ field.errors }}
+                </div>
+            {% endfor %}
+        </div>
+        {% if form.non_field_errors %}<div class="errorlist" style="margin-top:.75rem;">{{ form.non_field_errors }}</div>{% endif %}
+        <div class="modal-acoes">
+            <button type="submit">Salvar</button>
+            <a href="{% url 'cadastros:alunos' %}">Cancelar</a>
+        </div>
+    </form>
+</dialog>
+{% endif %}
 {% endblock %}
