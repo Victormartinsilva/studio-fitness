@@ -1,10 +1,11 @@
 from decimal import Decimal
 
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.cadastros.models import Aluno
-from apps.contas.permissions import gestor_required
 
 from .forms import AvaliacaoFisicaForm
 from .models import AvaliacaoFisica
@@ -65,17 +66,30 @@ def _grafico(avaliacoes):
     return grafico
 
 
-@gestor_required
+@login_required
 def evolucao(request, aluno_pk, pk=None):
     aluno = get_object_or_404(Aluno, pk=aluno_pk)
+    pode_gerenciar = request.user.is_superuser or request.user.is_gestor
+    pode_visualizar = pode_gerenciar or (
+        request.user.is_aluno
+        and hasattr(request.user, "aluno")
+        and request.user.aluno.pk == aluno.pk
+    )
+    if not pode_visualizar:
+        raise PermissionDenied("Você não pode acessar as avaliações deste aluno.")
+
     instancia = get_object_or_404(AvaliacaoFisica, pk=pk, aluno=aluno) if pk else None
 
     if request.method == "POST" and request.POST.get("_excluir") and instancia:
+        if not pode_gerenciar:
+            raise PermissionDenied("Você não pode alterar avaliações.")
         instancia.delete()
         messages.success(request, "Avaliação excluída.")
         return redirect("avaliacoes:evolucao", aluno_pk=aluno.pk)
 
     if request.method == "POST":
+        if not pode_gerenciar:
+            raise PermissionDenied("Você não pode alterar avaliações.")
         form = AvaliacaoFisicaForm(request.POST, instance=instancia)
         if form.is_valid():
             avaliacao = form.save(commit=False)
@@ -119,5 +133,6 @@ def evolucao(request, aluno_pk, pk=None):
             "pontos_grafico": _grafico(avaliacoes),
             "aba": "alunos",
             "cancel_arg": aluno.pk,
+            "pode_gerenciar": pode_gerenciar,
         },
     )

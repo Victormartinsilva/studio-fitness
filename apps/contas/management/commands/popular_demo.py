@@ -1,6 +1,6 @@
 """
 Cria usuários e dados de demonstração:
-gestora (Carla), professores (Bia, Leo, Felipe) e aluna (Mariana),
+gestora (Carla), administrador (Admin), professores (Bia, Leo, Felipe) e aluna (Mariana),
 mais equipamentos, tipo de sessão, planos e algumas sessões de exemplo.
 Senha de todos: demo1234
 """
@@ -22,7 +22,10 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         gestora = self._criar_usuario(
-            "gestor", "Carla", "Gestora", Usuario.Papel.GESTOR, is_staff=True, is_superuser=True
+            "gestor", "Carla", "Gestora", Usuario.Papel.GESTOR, is_staff=True
+        )
+        self._criar_usuario(
+            "adm", "Admin", "Studio Fitness", Usuario.Papel.GESTOR, is_staff=True, is_superuser=True
         )
 
         professores = {}
@@ -110,7 +113,7 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                "Dados de demonstração criados. Login: gestor, bia, leo, felipe, mariana "
+                "Dados de demonstração criados. Login: adm, gestor, bia, leo, felipe, mariana "
                 f"(senha: {SENHA_DEMO})"
             )
         )

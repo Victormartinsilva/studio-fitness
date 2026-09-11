@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Módulos — Studio Fitness{% endblock %}
+{% block content %}
+<div class="linha-titulo">
+    <div>
+        <h1>Módulos da plataforma</h1>
+        <p class="sub">A operação evolui por fases, sem perder a base única de dados.</p>
+    </div>
+</div>
+
+<div class="modulos">
+    {% for modulo in modulos %}
+    <a class="modulo {% if modulo.liberado %}liberado{% else %}bloqueado{% endif %}" href="{% url 'modulos:detalhe' modulo.slug %}">
+        <span class="fase">Fase {{ modulo.fase }}</span>
+        <h2>{{ modulo.titulo }}</h2>
+        <p>{{ modulo.descricao }}</p>
+        <span class="status-modulo">{% if modulo.liberado %}Disponível{% else %}Em breve{% endif %}</span>
+        <span class="publico">{{ modulo.publico }}</span>
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

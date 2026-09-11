@@ -303,6 +303,26 @@ dialog.modal-cartao[open] {
 .grafico-evolucao .rotulo-eixo { font-size: 9px; fill: var(--ink-4); font-family: "Public Sans", sans-serif; }
 .grafico-evolucao .rotulo-valor { font-size: 10px; font-weight: 600; fill: var(--ink-2); font-family: "Public Sans", sans-serif; }
 
+/* ---------- módulos e roadmap ---------- */
+.modulos, .pilares { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.modulo, .pilar {
+  min-height: 180px; padding: 16px; border: 1px solid var(--borda-forte);
+  border-radius: var(--r-lg); background: var(--superficie); color: var(--ink);
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+}
+.modulo:hover { border-color: var(--roxo); color: var(--ink); box-shadow: 0 4px 14px rgba(46,18,56,.08); }
+.modulo h2 { margin: 0; }
+.modulo p { margin: 0; color: var(--ink-3); font-size: 13px; }
+.modulo.bloqueado, .pilar.bloqueado { background: #faf8fb; }
+.fase { color: var(--verde-texto); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.status-modulo { margin-top: auto; font-size: 12px; font-weight: 600; color: var(--roxo); }
+.modulo.bloqueado .status-modulo { color: var(--ink-4); }
+.publico, .pilar > span:last-child { font-size: 12px; color: var(--ink-3); }
+.pilar { min-height: 128px; }
+.pilar strong { font-family: "Outfit", sans-serif; font-size: 16px; }
+.modulo-detalhe { max-width: 620px; }
+.modulo-detalhe h1 { margin: 0; }
+
 /* ---------- abas segmentadas ---------- */
 .abas { display: flex; background: #f2eef5; border-radius: var(--r-md); padding: 3px; }
 .abas a {

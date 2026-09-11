@@ -65,4 +65,18 @@
         {% endfor %}
     </div>
 </div>
+
+<section style="margin-top:20px">
+    <div class="linha-titulo">
+        <h2>Plataforma por fases</h2>
+        <span class="espaco"></span>
+        <a class="btn btn-secundario btn-sm" href="{% url 'modulos:indice' %}">Ver módulos</a>
+    </div>
+    <div class="pilares">
+        <div class="pilar"><span class="fase">Fase 1</span><strong>Base da operação</strong><span>Cadastros e agenda inteligente</span></div>
+        <div class="pilar"><span class="fase">Fase 2</span><strong>Financeiro e avaliação</strong><span>Avaliações já disponíveis</span></div>
+        <div class="pilar bloqueado"><span class="fase">Fase 3</span><strong>Experiência do aluno</strong><span>Em desenvolvimento</span></div>
+        <div class="pilar bloqueado"><span class="fase">Fase 4</span><strong>Automação</strong><span>Em desenvolvimento</span></div>
+    </div>
+</section>
 {% endblock %}

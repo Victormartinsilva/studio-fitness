@@ -72,3 +72,17 @@ class AvaliacoesFisicasTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 403)
+
+    def test_aluno_visualiza_a_propria_evolucao_sem_poder_alterar(self):
+        usuario = Usuario.objects.create_user(
+            username="mariana", password="senha-segura", papel=Usuario.Papel.ALUNO
+        )
+        self.aluno.usuario = usuario
+        self.aluno.save()
+        AvaliacaoFisica.objects.create(aluno=self.aluno, peso_kg=Decimal("62.5"))
+        self.client.force_login(usuario)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "62.5 kg")
+        self.assertNotContains(response, "Nova avaliação")

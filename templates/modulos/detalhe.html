@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ modulo.titulo }} — Studio Fitness{% endblock %}
+{% block content %}
+<div class="card modulo-detalhe">
+    <span class="fase">Fase {{ modulo.fase }}</span>
+    <h1>{{ modulo.titulo }}</h1>
+    <p>{{ modulo.descricao }}</p>
+    <p class="sub">Público: {{ modulo.publico }}</p>
+
+    {% if modulo.liberado %}
+    <div class="alerta">
+        <span style="font-weight:600">Este pilar já está disponível na plataforma.</span>
+        <span class="detalhe">Acesse-o pelo menu principal conforme seu perfil.</span>
+    </div>
+    {% elif pode_ver_previa %}
+    <div class="alerta aviso">
+        <span style="font-weight:600">Prévia administrativa</span>
+        <span class="detalhe">Este módulo está planejado e bloqueado para os demais perfis até a conclusão da Fase {{ modulo.fase }}.</span>
+    </div>
+    {% else %}
+    <div class="alerta aviso">
+        <span style="font-weight:600">Módulo em desenvolvimento</span>
+        <span class="detalhe">Ele será liberado para {{ modulo.publico|lower }} após a conclusão da Fase {{ modulo.fase }}.</span>
+    </div>
+    {% endif %}
+
+    <div class="acoes-form">
+        <a class="btn btn-secundario" href="{% url 'modulos:indice' %}">Ver todos os módulos</a>
+    </div>
+</div>
+{% endblock %}

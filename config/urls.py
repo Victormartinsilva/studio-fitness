@@ -8,5 +8,6 @@ urlpatterns = [
     path("planos/", include("apps.planos.urls")),
     path("agenda/", include("apps.agenda.urls")),
     path("avaliacoes/", include("apps.avaliacoes.urls")),
+    path("modulos/", include("apps.modulos.urls")),
     path("", include("apps.painel.urls")),
 ]
