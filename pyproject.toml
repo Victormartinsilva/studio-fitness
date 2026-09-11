@@ -1,2 +1,15 @@
+[project]
+name = "studio-fitness"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "Django>=5.2,<5.3",
+    "dj-database-url>=3.0",
+    "psycopg[binary]>=3.2",
+    "whitenoise>=6.9",
+    "gunicorn>=23.0",
+    "python-dotenv>=1.0",
+]
+
 [tool.vercel.scripts]
 build = "python vercel_build.py"
