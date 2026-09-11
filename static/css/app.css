@@ -250,14 +250,17 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 .grade .bloco.livre {
   background: var(--superficie); border: 1px dashed #b58ac4; color: var(--roxo);
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 600;
+  font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none;
+  transition: background .12s ease, border-color .12s ease;
 }
+.grade .bloco.livre:hover { background: var(--roxo-claro); border-color: var(--roxo); }
 .legenda { display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 2px 0; }
 .legenda span.item-legenda { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-3); }
 .legenda i { width: 12px; height: 12px; border-radius: 3px; display: block; }
 .legenda i.sessao { background: var(--roxo); }
 .legenda i.preparo { background: var(--hachura); }
 .legenda i.bloqueio { background: var(--hachura-cinza); border: 1px dashed #c3bac9; }
+.legenda i.livre { background: var(--superficie); border: 1px dashed #b58ac4; }
 
 /* ---------- botão "+" retrátil (abre o formulário de novo/editar) ---------- */
 .botao-mais {

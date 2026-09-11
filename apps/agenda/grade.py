@@ -8,6 +8,7 @@ from datetime import date, datetime, time, timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.cadastros.models import Equipamento
@@ -18,10 +19,12 @@ HORA_INICIO = 7          # primeira hora exibida
 HORA_FIM = 21            # última hora exibida (exclusiva)
 ALTURA_HORA = 72         # px por hora
 PX_POR_MIN = ALTURA_HORA / 60
+SLOT_MIN = 30            # granularidade dos horários livres clicáveis
+SLOT_MIN_MINIMO = 15     # não mostra sobra de vaga menor que isso no fim de um intervalo
 
 
-def _offset(momento, dia):
-    """Posição em px de um datetime dentro da pista do dia."""
+def _minutos(momento, dia):
+    """Minuto (clipado à janela do dia) de um datetime dentro da pista do dia."""
     local = timezone.localtime(momento)
     if local.date() < dia:
         minutos = 0
@@ -30,7 +33,12 @@ def _offset(momento, dia):
     else:
         minutos = (local.hour - HORA_INICIO) * 60 + local.minute
     limite = (HORA_FIM - HORA_INICIO) * 60
-    return max(0, min(minutos, limite)) * PX_POR_MIN
+    return max(0, min(minutos, limite))
+
+
+def _offset(momento, dia):
+    """Posição em px de um datetime dentro da pista do dia."""
+    return _minutos(momento, dia) * PX_POR_MIN
 
 
 def _bloco(classe, inicio, fim, dia, titulo="", subtitulo=""):
@@ -43,6 +51,47 @@ def _bloco(classe, inicio, fim, dia, titulo="", subtitulo=""):
         "titulo": titulo,
         "subtitulo": subtitulo,
     }
+
+
+def _vagas_livres(ocupados, dia, equipamento_id, agora):
+    """Calcula os intervalos sem sessão/bloqueio na pista e devolve blocos
+    clicáveis de SLOT_MIN minutos para permitir agendar direto na grade."""
+    limite = (HORA_FIM - HORA_INICIO) * 60
+
+    ocupados = sorted(ocupados)
+    livres_min = []
+    cursor = 0
+    for inicio_min, fim_min in ocupados:
+        inicio_min = max(0, min(inicio_min, limite))
+        fim_min = max(0, min(fim_min, limite))
+        if inicio_min > cursor:
+            livres_min.append((cursor, inicio_min))
+        cursor = max(cursor, fim_min)
+    if cursor < limite:
+        livres_min.append((cursor, limite))
+
+    vagas = []
+    for inicio_gap, fim_gap in livres_min:
+        m = inicio_gap
+        while m < fim_gap:
+            fim_slot = min(m + SLOT_MIN, fim_gap)
+            if fim_slot - m < SLOT_MIN_MINIMO:
+                break
+            hh, mm = divmod(HORA_INICIO * 60 + m, 60)
+            momento = timezone.make_aware(datetime.combine(dia, time(hh, mm)))
+            if momento >= agora:
+                vagas.append(
+                    {
+                        "top": round(m * PX_POR_MIN, 1),
+                        "altura": round((fim_slot - m) * PX_POR_MIN, 1),
+                        "titulo": "{:02d}:{:02d}".format(hh, mm),
+                        "href": "{}?data={}&hora_inicio={:02d}:{:02d}&equipamento={}".format(
+                            reverse("agenda:agendar"), dia.isoformat(), hh, mm, equipamento_id
+                        ),
+                    }
+                )
+            m = fim_slot
+    return vagas
 
 
 @login_required
@@ -64,13 +113,17 @@ def grade(request):
     bloqueios = BloqueioEquipamento.objects.filter(inicio__lt=fim_dia, fim__gt=inicio_dia)
 
     equipamentos = Equipamento.objects.exclude(status=Equipamento.Status.INATIVO)
+    pode_agendar = request.user.is_superuser or request.user.is_gestor or request.user.is_professor
+    agora = timezone.now()
 
     colunas = []
     for equipamento in equipamentos:
         blocos = []
+        ocupados = []
         for sessao in sessoes:
             if sessao.equipamento_id != equipamento.id:
                 continue
+            ocupados.append((_minutos(sessao.reserva_inicio, dia), _minutos(sessao.reserva_fim, dia)))
             if sessao.reserva_inicio < sessao.inicio:
                 blocos.append(_bloco("preparo", sessao.reserva_inicio, sessao.inicio, dia))
             if sessao.reserva_fim > sessao.fim:
@@ -90,6 +143,7 @@ def grade(request):
         for bloqueio in bloqueios:
             if bloqueio.equipamento_id != equipamento.id:
                 continue
+            ocupados.append((_minutos(bloqueio.inicio, dia), _minutos(bloqueio.fim, dia)))
             blocos.append(
                 _bloco(
                     "bloqueio",
@@ -102,7 +156,10 @@ def grade(request):
                     ),
                 )
             )
-        colunas.append({"equipamento": equipamento, "blocos": blocos})
+        vagas = []
+        if pode_agendar and equipamento.status == Equipamento.Status.ATIVO:
+            vagas = _vagas_livres(ocupados, dia, equipamento.id, agora)
+        colunas.append({"equipamento": equipamento, "blocos": blocos, "vagas": vagas})
 
     minutos_reservados = sum(
         (s.reserva_fim - s.reserva_inicio).total_seconds() / 60
@@ -132,6 +189,6 @@ def grade(request):
             "colunas": colunas,
             "total_sessoes": len([s for s in sessoes]),
             "ocupacao": round(minutos_reservados / capacidade * 100),
-            "pode_agendar": request.user.is_superuser or request.user.is_gestor or request.user.is_professor,
+            "pode_agendar": pode_agendar,
         },
     )

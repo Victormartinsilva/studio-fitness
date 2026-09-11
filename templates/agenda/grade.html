@@ -37,6 +37,9 @@
                 {% endif %}
             </div>
             <div class="pista" style="height:{{ altura_pista }}px;background:repeating-linear-gradient(to bottom, #fff 0 {{ altura_hora_menos1 }}px, #f3eef6 {{ altura_hora_menos1 }}px {{ altura_hora }}px)">
+                {% for v in coluna.vagas %}
+                <a class="bloco livre" style="top:{{ v.top }}px;height:{{ v.altura }}px" href="{{ v.href }}" title="Agendar às {{ v.titulo }}">+ {{ v.titulo }}</a>
+                {% endfor %}
                 {% for b in coluna.blocos %}
                 <div class="bloco {{ b.classe }}" style="top:{{ b.top }}px;height:{{ b.altura }}px">
                     {% if b.titulo %}<div class="quem">{{ b.titulo }}</div>{% endif %}
@@ -55,5 +58,6 @@
     <span class="item-legenda"><i class="sessao"></i>Sessão</span>
     <span class="item-legenda"><i class="preparo"></i>Preparo / troca do equipamento</span>
     <span class="item-legenda"><i class="bloqueio"></i>Bloqueio</span>
+    {% if pode_agendar %}<span class="item-legenda"><i class="livre"></i>Horário livre — clique para agendar</span>{% endif %}
 </div>
 {% endblock %}

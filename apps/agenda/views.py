@@ -60,7 +60,13 @@ def agendar(request):
                 messages.success(request, "Sessão agendada com sucesso.")
                 return redirect("agenda:minhas_sessoes")
     else:
-        form = AgendarForm(initial={"data": request.GET.get("data")})
+        form = AgendarForm(
+            initial={
+                "data": request.GET.get("data"),
+                "hora_inicio": request.GET.get("hora_inicio"),
+                "equipamento": request.GET.get("equipamento"),
+            }
+        )
 
     return render(request, "agenda/agendar.html", {"form": form, "aba": "agenda"})
 
