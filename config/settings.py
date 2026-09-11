@@ -9,7 +9,10 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv(BASE_DIR / ".env")
+# Só lê o .env em desenvolvimento local; em produção (Vercel/Render) as
+# variáveis reais devem vir do painel da plataforma, nunca do arquivo.
+if not (os.environ.get("VERCEL") or os.environ.get("RENDER")):
+    load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.environ.get("SECRET_KEY") or "django-insecure-chave-de-desenvolvimento-trocar"
 
@@ -17,9 +20,22 @@ DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h.strip()]
 
+# Vercel expõe a URL do deployment atual (e do projeto) nessas variáveis.
+_VERCEL_HOSTS = [
+    os.environ.get("VERCEL_URL"),
+    os.environ.get("VERCEL_BRANCH_URL"),
+    os.environ.get("VERCEL_PROJECT_PRODUCTION_URL"),
+]
+ALLOWED_HOSTS += [h for h in _VERCEL_HOSTS if h and h not in ALLOWED_HOSTS]
+if os.environ.get("VERCEL"):
+    ALLOWED_HOSTS.append(".vercel.app")
+
 CSRF_TRUSTED_ORIGINS = [
     o.strip() for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
 ]
+CSRF_TRUSTED_ORIGINS += [f"https://{h}" for h in _VERCEL_HOSTS if h]
+if os.environ.get("VERCEL"):
+    CSRF_TRUSTED_ORIGINS.append("https://*.vercel.app")
 
 # Granularidade das sugestões de horário (minutos)
 AGENDA_PASSO_MINUTOS = int(os.environ.get("AGENDA_PASSO_MINUTOS") or "5")
