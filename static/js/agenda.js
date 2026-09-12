@@ -37,6 +37,20 @@
     const margem = 16;
 
     const destino = pista.getBoundingClientRect().top + window.pageYOffset + alvoPx - alturaTopbar - margem;
-    window.scrollTo(0, Math.max(destino, 0));
+
+    // Duplo rAF (roda só depois que o navegador terminou de pintar o
+    // primeiro frame): os links da página navegam com "#dia-atual" na URL
+    // (troca de dia, faixa de dias, meses) pra rolar a faixa de dias
+    // horizontalmente até o chip do dia selecionado — isso também dispara
+    // rolagem vertical nativa do navegador até esse mesmo elemento, que
+    // concorre com este scroll. Rodar depois do primeiro paint garante que
+    // este scroll (o que realmente importa: o horário do dia) vença por
+    // último, de forma consistente entre navegadores, sem atrasar
+    // perceptivelmente o que o usuário vê.
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        window.scrollTo(0, Math.max(destino, 0));
+      });
+    });
   });
 })();
