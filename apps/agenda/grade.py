@@ -183,8 +183,6 @@ def grade(request):
     total_sessoes = resumo["total_sessoes"] - sessoes_canceladas_no_dia
     ocupacao = resumo["ocupacao_pct"]
 
-    minutos_agora = _minutos(agora, dia) if dia == hoje else None
-
     colunas = []
     for equipamento in equipamentos:
         blocos = []
@@ -241,18 +239,11 @@ def grade(request):
             professor_id_para_vaga = professor_logado.id if professor_logado is not None else None
             vagas = _vagas_livres(ocupados, dia, equipamento.id, agora, professor_id=professor_id_para_vaga)
 
-        ocupado_agora = (
-            minutos_agora is not None
-            and any(inicio_min <= minutos_agora < fim_min for inicio_min, fim_min in ocupados)
-        )
-
         colunas.append(
             {
                 "equipamento": equipamento,
                 "blocos": blocos,
                 "vagas": vagas,
-                "resumo": resumo["por_equipamento"].get(equipamento.nome),
-                "ocupado_agora": ocupado_agora,
             }
         )
 

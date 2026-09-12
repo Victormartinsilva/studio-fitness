@@ -64,20 +64,7 @@
         <div class="coluna">
             <div class="cabeca">
                 {{ coluna.equipamento.nome }}
-                {% if coluna.equipamento.status == 'ativo' %}
-                {% if coluna.resumo %}
-                <span class="tag ok">{{ coluna.resumo.qtd }} sessões · {{ coluna.resumo.ocupacao_pct }}%</span>
-                {% else %}
-                <span class="tag ok">0 sessões · 0%</span>
-                {% endif %}
-                {% if dia_eh_hoje %}
-                {% if coluna.ocupado_agora %}
-                <span class="tag aviso">ocupado agora</span>
-                {% else %}
-                <span class="tag ok">livre agora</span>
-                {% endif %}
-                {% endif %}
-                {% else %}
+                {% if coluna.equipamento.status != 'ativo' %}
                 <span class="tag aviso">{{ coluna.equipamento.get_status_display|lower }}</span>
                 {% endif %}
             </div>
