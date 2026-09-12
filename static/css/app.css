@@ -72,6 +72,28 @@ a:hover { color: var(--verde); }
 }
 .btn-sair:hover { border-color: var(--roxo); color: var(--roxo); }
 
+/* ---------- topbar: sino de alertas, recolhível (mesmo padrão do
+   `.calendario-picker` da agenda: details/summary, sem JS) ---------- */
+.sino-alertas { position: relative; }
+.sino-alertas summary {
+  cursor: pointer; list-style: none; font-size: 18px; line-height: 1;
+  position: relative; padding: 4px;
+}
+.sino-alertas summary::-webkit-details-marker { display: none; }
+.badge-sino {
+  position: absolute; top: -2px; right: -2px; min-width: 16px; height: 16px;
+  border-radius: 999px; background: var(--vermelho); color: #fff;
+  font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  padding: 0 3px;
+}
+.painel-sino {
+  position: absolute; top: 100%; right: 0; z-index: 30; margin-top: 8px;
+  width: min(360px, 92vw); background: var(--superficie);
+  border: 1px solid var(--borda); border-radius: var(--r-md); padding: 10px;
+  box-shadow: 0 8px 24px rgba(36,16,44,.16);
+}
+.painel-sino .lista-alertas { max-height: 360px; }
+
 /* ---------- conteúdo ---------- */
 main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(safe-area-inset-bottom)); }
 .linha-titulo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }

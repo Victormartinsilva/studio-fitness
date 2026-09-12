@@ -4,11 +4,11 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.utils import timezone
 
+from apps.agenda import motor
 from apps.agenda.models import Sessao
+from apps.cadastros.models import Aluno, Equipamento
 from apps.modulos.catalogo import MODULOS
 from apps.modulos.models import VisibilidadeModulo
-
-from .alertas import gerar_alertas
 
 
 @login_required
@@ -29,6 +29,17 @@ def home(request):
 
     proxima = minhas.filter(inicio__gte=agora).order_by("inicio").first()
 
+    kpis = []
+    if usuario.is_superuser or usuario.is_gestor:
+        resumo = motor.resumo_do_dia(hoje)
+        sessoes_canceladas_hoje = resumo["por_status"].get(Sessao.Status.CANCELADA, 0)
+        kpis = [
+            {"valor": "{}%".format(resumo["ocupacao_pct"]), "nome": "Ocupação hoje"},
+            {"valor": resumo["total_sessoes"] - sessoes_canceladas_hoje, "nome": "Sessões hoje"},
+            {"valor": Aluno.objects.filter(ativo=True).count(), "nome": "Alunos ativos"},
+            {"valor": Equipamento.objects.filter(status=Equipamento.Status.ATIVO).count(), "nome": "Equipamentos ativos"},
+        ]
+
     modulos_previa = []
     if not (usuario.is_superuser or usuario.is_gestor):
         slugs_visiveis = set(
@@ -42,8 +53,8 @@ def home(request):
         {
             "aba": "inicio",
             "hoje": hoje,
-            "alertas": gerar_alertas(usuario),
             "proxima": proxima,
+            "kpis": kpis,
             "pode_agendar": usuario.is_superuser or usuario.is_gestor or usuario.is_professor,
             "proximas_24h": minhas.filter(inicio__gte=agora, inicio__lte=agora + timedelta(hours=24)).count(),
             "modulos_previa": modulos_previa,

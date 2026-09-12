@@ -6,56 +6,43 @@
     <h1 style="margin-top:4px">Olá, {{ request.user.first_name|default:request.user.username }}</h1>
 </div>
 
-<div class="painel-colunas">
-    <div class="pilha-lg">
-        {% if proxima %}
-        <div class="proxima">
-            <div style="display:flex;justify-content:space-between;align-items:baseline">
-                <span class="rotulo">Próxima sessão</span>
-                <span style="font-size:12px;font-weight:600;color:#a9dc6a">{{ proxima.inicio|timeuntil }}</span>
-            </div>
-            <div style="display:flex;align-items:baseline;gap:10px">
-                <span class="hora">{{ proxima.inicio|date:"H:i" }}</span>
-                <span class="ate">– {{ proxima.fim|date:"H:i" }} · {{ proxima.tipo.duracao_min }} min</span>
-            </div>
-            <div class="linhas">
-                <div>{{ proxima.aluno }} · {{ proxima.professor }}</div>
-                {% if proxima.equipamento %}
-                <div class="reserva">{{ proxima.equipamento }} · reservado {{ proxima.reserva_inicio|date:"H:i" }} – {{ proxima.reserva_fim|date:"H:i" }}</div>
-                {% endif %}
-            </div>
-            <div class="acoes">
-                <a class="btn btn-verde" href="{% url 'agenda:grade' %}">Ver agenda</a>
-                <a class="btn btn-vazado" href="{% url 'agenda:minhas_sessoes' %}">Minhas sessões</a>
-            </div>
+<div class="pilha-lg">
+    {% if proxima %}
+    <div class="proxima">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <span class="rotulo">Próxima sessão</span>
+            <span style="font-size:12px;font-weight:600;color:#a9dc6a">{{ proxima.inicio|timeuntil }}</span>
         </div>
-        {% else %}
-        <div class="card">
-            <h2>Nenhuma sessão à frente</h2>
-            <p class="sub" style="margin-bottom:12px">Sua próxima sessão aparece aqui com o horário de preparo do equipamento.</p>
-            {% if pode_agendar %}<a class="btn" href="{% url 'agenda:agendar' %}">+ Agendar sessão</a>{% endif %}
+        <div style="display:flex;align-items:baseline;gap:10px">
+            <span class="hora">{{ proxima.inicio|date:"H:i" }}</span>
+            <span class="ate">– {{ proxima.fim|date:"H:i" }} · {{ proxima.tipo.duracao_min }} min</span>
         </div>
-        {% endif %}
-
-    </div>
-
-    <div class="pilha">
-        <div class="linha-titulo" style="margin-bottom:0">
-            <h3>Alertas</h3>
-            <span class="espaco"></span>
-            <span style="font-size:12px;font-weight:600;color:var(--roxo)">{{ alertas|length }}</span>
+        <div class="linhas">
+            <div>{{ proxima.aluno }} · {{ proxima.professor }}</div>
+            {% if proxima.equipamento %}
+            <div class="reserva">{{ proxima.equipamento }} · reservado {{ proxima.reserva_inicio|date:"H:i" }} – {{ proxima.reserva_fim|date:"H:i" }}</div>
+            {% endif %}
         </div>
-        <div class="lista-alertas">
-            {% for alerta in alertas %}
-            <div class="alerta {% if alerta.nivel == 'aviso' %}aviso{% elif alerta.nivel == 'critico' %}critico{% endif %}">
-                <span style="font-weight:600;font-size:14px">{{ alerta.mensagem }}</span>
-                {% if alerta.detalhe %}<span class="detalhe">{{ alerta.detalhe }}</span>{% endif %}
-            </div>
-            {% empty %}
-            <div class="card vazio">Nenhum alerta no momento.</div>
-            {% endfor %}
+        <div class="acoes">
+            <a class="btn btn-verde" href="{% url 'agenda:grade' %}">Ver agenda</a>
+            <a class="btn btn-vazado" href="{% url 'agenda:minhas_sessoes' %}">Minhas sessões</a>
         </div>
     </div>
+    {% else %}
+    <div class="card">
+        <h2>Nenhuma sessão à frente</h2>
+        <p class="sub" style="margin-bottom:12px">Sua próxima sessão aparece aqui com o horário de preparo do equipamento.</p>
+        {% if pode_agendar %}<a class="btn" href="{% url 'agenda:agendar' %}">+ Agendar sessão</a>{% endif %}
+    </div>
+    {% endif %}
+
+    {% if kpis %}
+    <div class="kpis">
+        {% for kpi in kpis %}
+        <div class="kpi"><span class="valor">{{ kpi.valor }}</span><span class="nome">{{ kpi.nome }}</span></div>
+        {% endfor %}
+    </div>
+    {% endif %}
 </div>
 
 <section style="margin-top:20px">

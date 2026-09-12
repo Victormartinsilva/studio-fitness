@@ -178,9 +178,6 @@ def grade(request):
     filtro_professor_ativo = professor_destaque_id is not None and bool(filtro_professor_id)
 
     resumo = motor.resumo_do_dia(dia)
-    sessoes_canceladas_no_dia = resumo["por_status"].get(Sessao.Status.CANCELADA, 0)
-    total_sessoes = resumo["total_sessoes"] - sessoes_canceladas_no_dia
-    ocupacao = resumo["ocupacao_pct"]
 
     # Menor `inicio_min` entre todas as sessões/bloqueios do dia, em todas as
     # colunas — usado como posição de fallback pro auto-scroll inicial (item
@@ -301,25 +298,6 @@ def grade(request):
     if not mostrar_linha_agora and menor_inicio_ocupado_min is not None:
         scroll_inicial_top = "{:.1f}".format(menor_inicio_ocupado_min * PX_POR_MIN)
 
-    # Próxima vaga do dia (qualquer professor/equipamento), pronta pra virar
-    # link de agendamento pré-preenchido.
-    proxima_vaga = resumo["proxima_vaga"]
-    proxima_vaga_ctx = None
-    if proxima_vaga:
-        inicio_local = timezone.localtime(proxima_vaga["inicio"])
-        proxima_vaga_ctx = {
-            "texto": "{:%H:%M} · {} · {}".format(
-                inicio_local, proxima_vaga["equipamento"], proxima_vaga["professor"]
-            ),
-            "href": "{}?data={}&hora_inicio={:%H:%M}&equipamento={}&professor={}".format(
-                reverse("agenda:agendar"),
-                dia.isoformat(),
-                inicio_local,
-                proxima_vaga["equipamento"].id,
-                proxima_vaga["professor"].id,
-            ),
-        }
-
     # Faixa rolável de dias: uma semana antes e duas semanas depois do dia
     # visto, para o usuário arrastar/rolar lateralmente até a data desejada
     # sem precisar clicar em "‹"/"›" repetidas vezes.
@@ -356,10 +334,6 @@ def grade(request):
             "altura_hora_menos1": ALTURA_HORA - 1,
             "altura_pista": (HORA_FIM - HORA_INICIO) * ALTURA_HORA,
             "colunas": colunas,
-            "total_sessoes": total_sessoes,
-            "ocupacao": ocupacao,
-            "alunos_distintos": resumo["alunos_distintos"],
-            "proxima_vaga": proxima_vaga_ctx,
             "linha_professores": linha_professores,
             "mostrar_linha_agora": mostrar_linha_agora,
             "linha_agora_top": linha_agora_top,

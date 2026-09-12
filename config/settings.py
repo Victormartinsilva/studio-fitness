@@ -90,6 +90,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "apps.modulos.context_processors.eixos_visiveis",
                 "apps.assistente.context_processors.assistente_ativo",
+                "apps.painel.context_processors.alertas_topbar",
             ],
         },
     },

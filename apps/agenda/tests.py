@@ -540,7 +540,6 @@ class GradeInteligenteTests(TestCase):
 
         resumo_direto = motor.resumo_do_dia(self.dia)
         self.assertNotIn("Equip. 02", resumo_direto["por_equipamento"])
-        self.assertContains(response, f'{resumo_direto["ocupacao_pct"]}%')
         # a coluna do equipamento em manutenção continua aparecendo...
         self.assertContains(response, "Equip. 02")
         # ...mas com a etiqueta de status, não contando sessões/ocupação.
@@ -618,9 +617,11 @@ class GradeInteligenteTests(TestCase):
 )
 class PainelEGradeOcupacaoTests(TestCase):
     """Bug original: painel e grade calculavam ocupação de formas diferentes.
-    O painel não exibe mais o percentual de ocupação (fica só na agenda, que
-    já mostra o dado — ver `templates/painel/home.html`), mas a grade
-    continua usando `motor.resumo_do_dia` como única fonte da verdade."""
+    Hoje a grade não exibe mais nenhuma métrica de ocupação (essa
+    informação ficou só nos cards do painel — ver
+    `templates/painel/home.html`), então o teste de paridade passou a
+    verificar o painel diretamente contra `motor.resumo_do_dia`, única
+    fonte da verdade."""
 
     def setUp(self):
         self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45, preparo_min=10, troca_min=10)
@@ -634,7 +635,7 @@ class PainelEGradeOcupacaoTests(TestCase):
         self.aluno = Aluno.objects.create(nome="Mariana")
         self.equipamento = Equipamento.objects.create(nome="Equip. 01")
 
-    def test_grade_mostra_a_ocupacao_de_resumo_do_dia(self):
+    def test_painel_mostra_a_ocupacao_de_resumo_do_dia(self):
         hoje = timezone.localdate()
         inicio = timezone.make_aware(datetime.combine(hoje, datetime.min.time()) + timedelta(hours=10))
         fim = inicio + timedelta(minutes=self.tipo.duracao_min)
@@ -644,18 +645,11 @@ class PainelEGradeOcupacaoTests(TestCase):
         )
         self.client.force_login(self.gestor)
 
-        resposta_grade = self.client.get(reverse("agenda:grade") + f"?data={hoje.isoformat()}")
-
-        pct_esperado = motor.resumo_do_dia(hoje)["ocupacao_pct"]
-        self.assertContains(resposta_grade, f"{pct_esperado}%")
-
-    def test_painel_nao_mostra_mais_cards_de_ocupacao(self):
-        self.client.force_login(self.gestor)
-
         resposta_painel = self.client.get(reverse("painel:home"))
 
-        self.assertNotContains(resposta_painel, "Ocupação hoje")
-        self.assertNotContains(resposta_painel, "Equipamentos ativos")
+        pct_esperado = motor.resumo_do_dia(hoje)["ocupacao_pct"]
+        self.assertContains(resposta_painel, "Ocupação hoje")
+        self.assertContains(resposta_painel, f"{pct_esperado}%")
 
 
 class NivelDeMovimentoTests(TestCase):

@@ -38,6 +38,24 @@
         <span class="espaco"></span>
         <div class="usuario">
             {% if request.user.is_authenticated %}
+                <details class="sino-alertas">
+                    <summary aria-label="Alertas">
+                        🔔
+                        {% if alertas_topbar %}<span class="badge-sino">{{ alertas_topbar|length }}</span>{% endif %}
+                    </summary>
+                    <div class="painel-sino">
+                        <div class="lista-alertas">
+                            {% for alerta in alertas_topbar %}
+                            <div class="alerta {% if alerta.nivel == 'aviso' %}aviso{% elif alerta.nivel == 'critico' %}critico{% endif %}">
+                                <span style="font-weight:600;font-size:14px">{{ alerta.mensagem }}</span>
+                                {% if alerta.detalhe %}<span class="detalhe">{{ alerta.detalhe }}</span>{% endif %}
+                            </div>
+                            {% empty %}
+                            <div class="card vazio">Nenhum alerta no momento.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </details>
                 <span class="nome">{{ request.user.first_name|default:request.user.username }}</span>
                 <span class="avatar">{{ request.user.first_name|default:request.user.username|slice:":2"|upper }}</span>
                 <form method="post" action="{% url 'contas:logout' %}">

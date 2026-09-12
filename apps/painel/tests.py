@@ -1,6 +1,11 @@
+from datetime import timedelta
+
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
+from apps.agenda import servicos
+from apps.cadastros.models import Aluno, Equipamento, Professor, TipoSessao
 from apps.contas.models import Usuario
 from apps.modulos.models import VisibilidadeModulo
 
@@ -47,3 +52,56 @@ class PainelHomeTests(TestCase):
 
         self.assertContains(response, "Em breve para você")
         self.assertContains(response, "Gestão financeira")
+
+    def test_gestor_ve_os_4_cards_de_kpi(self):
+        self.client.force_login(self.gestor)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Ocupação hoje")
+        self.assertContains(response, "Sessões hoje")
+        self.assertContains(response, "Alunos ativos")
+        self.assertContains(response, "Equipamentos ativos")
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class SinoDeAlertasTests(TestCase):
+    """O sino de alertas mora em `base.html` (via o context processor
+    `apps.painel.context_processors.alertas_topbar`), então precisa
+    aparecer em QUALQUER página autenticada — não só na home."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45, preparo_min=10, troca_min=10)
+        usuario_professor = Usuario.objects.create_user(
+            "bia", password="teste12345", papel=Usuario.Papel.PROFESSOR
+        )
+        self.professor_usuario = usuario_professor
+        self.professor = Professor.objects.create(usuario=usuario_professor)
+        self.professor.tipos_habilitados.add(self.tipo)
+        self.aluno = Aluno.objects.create(nome="Mariana")
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+
+    def test_sino_mostra_contador_com_alertas_pendentes_fora_da_home(self):
+        inicio = timezone.now() + timedelta(hours=2)
+        fim = inicio + timedelta(minutes=self.tipo.duracao_min)
+        servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento, inicio=inicio, fim=fim,
+        )
+        self.client.force_login(self.professor_usuario)
+
+        response = self.client.get(reverse("agenda:grade"))
+
+        self.assertContains(response, 'class="badge-sino"')
+
+    def test_sino_sem_badge_quando_nao_ha_alertas(self):
+        self.client.force_login(self.professor_usuario)
+
+        response = self.client.get(reverse("agenda:grade"))
+
+        self.assertNotContains(response, 'class="badge-sino"')
