@@ -177,17 +177,20 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 .lista { display: flex; flex-direction: column; gap: 10px; }
 .item {
   background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--r-lg);
-  padding: 12px 14px; display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
 }
 .item .iniciais {
   width: 40px; height: 40px; flex: none; border-radius: 50%;
   background: var(--roxo-claro); color: var(--roxo);
   display: grid; place-items: center; font-weight: 600; font-size: 14px;
 }
-.item .corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.item .corpo { flex: 1 1 160px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .item .titulo { font-weight: 600; }
 .item .meta { font-size: 12px; color: var(--ink-3); }
-.item .acoes { display: flex; align-items: center; gap: 6px; flex: none; }
+.item .acoes {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  flex: 1 0 100%; justify-content: flex-end; padding-top: 2px;
+}
 .item .acoes form { display: inline; }
 .vazio { padding: 24px 14px; text-align: center; color: var(--ink-4); }
 
@@ -336,10 +339,14 @@ dialog.modal-cartao[open] {
 
 /* ---------- gráfico de evolução (SVG simples) ---------- */
 .grafico-evolucao { width: 100%; height: auto; display: block; }
+.grafico-evolucao .grade-linha { stroke: var(--borda); stroke-width: 1; }
+.grafico-evolucao .area { fill: var(--roxo); opacity: .1; stroke: none; }
 .grafico-evolucao .linha { fill: none; stroke: var(--roxo); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
 .grafico-evolucao .ponto { fill: var(--roxo); }
+.grafico-evolucao .ponto-atual { fill: var(--roxo); stroke: var(--superficie); stroke-width: 2.5; }
 .grafico-evolucao .rotulo-eixo { font-size: 9px; fill: var(--ink-4); font-family: "Public Sans", sans-serif; }
-.grafico-evolucao .rotulo-valor { font-size: 10px; font-weight: 600; fill: var(--ink-2); font-family: "Public Sans", sans-serif; }
+.grafico-evolucao .rotulo-valor { font-size: 11px; font-weight: 600; fill: var(--ink-2); font-family: "Public Sans", sans-serif; }
+.grafico-evolucao .rotulo-valor.atual { fill: var(--roxo); font-weight: 700; }
 
 /* ---------- módulos e roadmap ---------- */
 .modulos, .pilares { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
@@ -403,6 +410,8 @@ dialog.modal-cartao[open] {
   .tabs { display: none; }
   main { padding: 22px 24px 48px; }
   h1 { font-size: 28px; }
+  .item { flex-wrap: nowrap; }
+  .item .acoes { flex: none; justify-content: flex-start; padding-top: 0; }
   .grade .horas { width: 62px; }
   .grade .horas .hora { font-size: 12px; padding-right: 10px; }
   .grade .colunas { overflow: visible; }

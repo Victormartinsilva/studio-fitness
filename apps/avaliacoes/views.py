@@ -33,37 +33,69 @@ def _variacao(atual, anterior, unidade):
     return f"{sinal}{diferenca} {unidade} desde a anterior"
 
 
+def _num(valor):
+    # Formata em string com "." fixo: {{ }} no template localiza Decimal/float
+    # para vírgula em pt-br, o que corromperia coordenadas e atributos do SVG.
+    return f"{valor:.1f}"
+
+
 def _grafico(avaliacoes):
-    pontos = [
+    pontos_brutos = [
         (avaliacao.data, avaliacao.peso_kg)
         for avaliacao in reversed(avaliacoes)
         if avaliacao.peso_kg is not None
     ]
-    if not pontos:
-        return []
+    if not pontos_brutos:
+        return None
 
-    valores = [peso for _, peso in pontos]
+    valores = [peso for _, peso in pontos_brutos]
     minimo, maximo = min(valores), max(valores)
     amplitude = maximo - minimo
-    largura, altura, margem = 340, 120, 20
-    divisor = max(len(pontos) - 1, 1)
+    total = len(pontos_brutos)
+    indice_maximo = valores.index(maximo)
+    indice_minimo = valores.index(minimo)
 
-    grafico = []
-    for indice, (data, peso) in enumerate(pontos):
-        x = margem + (largura - margem * 2) * indice / divisor
-        y = altura / 2 if amplitude == Decimal("0") else (
-            altura - margem - float((peso - minimo) / amplitude) * (altura - margem * 2)
-        )
-        grafico.append(
+    largura, altura = 340, 150
+    margem_x, topo, base = 22, 24, 30
+    plot_altura = altura - topo - base
+    baseline_y = altura - base
+    divisor = max(total - 1, 1)
+
+    pontos = []
+    for indice, (data, peso) in enumerate(pontos_brutos):
+        x = margem_x + (largura - margem_x * 2) * indice / divisor
+        if amplitude == Decimal("0"):
+            y = topo + plot_altura / 2
+        else:
+            y = topo + plot_altura - float((peso - minimo) / amplitude) * plot_altura
+        destaque = total <= 5 or indice in (0, total - 1, indice_maximo, indice_minimo)
+        pontos.append(
             {
-                "x": round(x, 1),
-                "y": round(y, 1),
-                "label_y": round(y - 9, 1),
-                "peso": peso,
+                "x": _num(x),
+                "y": _num(y),
+                "label_y": _num(y - 10),
+                "peso": str(peso),
                 "data": data.strftime("%d/%m"),
+                "destaque": destaque,
+                "ultimo": indice == total - 1,
+                "raio": _num(5 if indice == total - 1 else 3.5),
             }
         )
-    return grafico
+
+    baseline_str = _num(baseline_y)
+    area = " ".join(f"{ponto['x']},{ponto['y']}" for ponto in pontos)
+    area += f" {pontos[-1]['x']},{baseline_str} {pontos[0]['x']},{baseline_str}"
+
+    return {
+        "pontos": pontos,
+        "area": area,
+        "largura": largura,
+        "altura": altura,
+        "margem_x": margem_x,
+        "eixo_x2": largura - margem_x,
+        "eixo_y": altura - 6,
+        "linhas_grade": [_num(topo), _num(topo + plot_altura / 2), baseline_str],
+    }
 
 
 @login_required
@@ -130,7 +162,7 @@ def evolucao(request, aluno_pk, pk=None):
             "editando": instancia,
             "avaliacoes": avaliacoes,
             "metricas": metricas,
-            "pontos_grafico": _grafico(avaliacoes),
+            "grafico": _grafico(avaliacoes),
             "aba": "alunos",
             "cancel_arg": aluno.pk,
             "pode_gerenciar": pode_gerenciar,
