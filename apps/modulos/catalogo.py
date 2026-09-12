@@ -78,9 +78,7 @@ class Eixo:
 EIXOS = (
     Eixo("meus_alunos", "Meus alunos", ("professor",)),
     Eixo("alunos", "Alunos", ("gestor",)),
-    Eixo("equipamentos", "Equipamentos", ("gestor",)),
-    Eixo("tipos_sessao", "Tipos de sessão", ("gestor",)),
-    Eixo("planos", "Planos", ("gestor",)),
+    Eixo("cadastros", "Cadastros (equipamentos, tipos de sessão e planos)", ("gestor",)),
 )
 
 

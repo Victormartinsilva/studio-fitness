@@ -8,6 +8,8 @@
     <a class="botao-mais" href="{% url 'cadastros:tipos_sessao' %}?novo=1" title="Novo tipo">+</a>
 </div>
 
+{% include "_partials/abas_cadastros.html" %}
+
 <div class="lista">
     {% for tipo in itens %}
     <div class="item">

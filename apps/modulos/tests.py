@@ -75,9 +75,7 @@ class ModulosTests(TestCase):
             {
                 "eixos_enviados": "1",
                 "eixo__professor__meus_alunos": "on",
-                "eixo__gestor__equipamentos": "on",
-                "eixo__gestor__tipos_sessao": "on",
-                "eixo__gestor__planos": "on",
+                "eixo__gestor__cadastros": "on",
             },
         )
         self.assertTrue(

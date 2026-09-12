@@ -7,10 +7,11 @@
     <a class="botao-mais" href="{% url 'planos:contratacoes' %}?novo=1" title="Novo plano assinado">+</a>
 </div>
 
-<div class="abas" style="max-width:360px;margin-bottom:16px">
+<div class="abas" style="max-width:360px;margin-bottom:8px">
     <a href="{% url 'planos:planos' %}">Planos</a>
     <a href="{% url 'planos:contratacoes' %}" class="ativo">Planos assinados</a>
 </div>
+{% include "_partials/abas_cadastros.html" %}
 
 <div class="lista">
     {% for contratacao in itens %}

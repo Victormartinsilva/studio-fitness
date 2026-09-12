@@ -1,0 +1,10 @@
+{% comment %}
+Sub-navegação compartilhada pelas 3 páginas do eixo único "Cadastros"
+(Equipamentos, Tipos de sessão, Planos) — usada para manter as três
+telas facilmente alcançáveis mesmo com o menu principal compacto.
+{% endcomment %}
+<div class="abas" style="max-width:480px;margin-bottom:16px">
+    <a href="{% url 'cadastros:equipamentos' %}" class="{% if aba == 'equipamentos' %}ativo{% endif %}">Equipamentos</a>
+    <a href="{% url 'cadastros:tipos_sessao' %}" class="{% if aba == 'tipos' %}ativo{% endif %}">Tipos de sessão</a>
+    <a href="{% url 'planos:planos' %}" class="{% if aba == 'planos' or aba == 'contratacoes' %}ativo{% endif %}">Planos</a>
+</div>

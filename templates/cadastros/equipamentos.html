@@ -8,6 +8,8 @@
     <a class="botao-mais" href="{% url 'cadastros:equipamentos' %}?novo=1" title="Novo equipamento">+</a>
 </div>
 
+{% include "_partials/abas_cadastros.html" %}
+
 <div class="lista">
     {% for equipamento in itens %}
     <div class="item">
