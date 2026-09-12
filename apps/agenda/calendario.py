@@ -16,15 +16,22 @@ DIA_SEMANA_INICIAL = calendar.SUNDAY  # calendários no Brasil começam no domin
 
 
 def _mes_ano_seguro(request, hoje):
-    """Lê `?ano=&mes=` da querystring, com fallback pro mês atual e
-    normalização de mês fora de 1..12 (navegação vira o ano)."""
+    """Lê `?ano=&mes=` da querystring, com fallback pro mês atual,
+    normalização de mês fora de 1..12 (navegação vira o ano) e fallback
+    também quando o ano resultante não é um ano de calendário válido
+    (`datetime.date` só aceita 1..9999) — sem isso, `?ano=0` ou um número
+    fora da faixa derruba a página com erro 500."""
     try:
         ano = int(request.GET.get("ano", hoje.year))
         mes = int(request.GET.get("mes", hoje.month))
     except (TypeError, ValueError):
-        ano, mes = hoje.year, hoje.month
+        return hoje.year, hoje.month
     ano += (mes - 1) // 12
     mes = (mes - 1) % 12 + 1
+    try:
+        date(ano, mes, 1)
+    except (ValueError, OverflowError):
+        return hoje.year, hoje.month
     return ano, mes
 
 
@@ -76,7 +83,8 @@ def ano(request):
     hoje = timezone.localdate()
     try:
         ano_num = int(request.GET.get("ano", hoje.year))
-    except (TypeError, ValueError):
+        date(ano_num, 1, 1)
+    except (TypeError, ValueError, OverflowError):
         ano_num = hoje.year
 
     por_mes = motor.contagem_por_mes_do_ano(ano_num)

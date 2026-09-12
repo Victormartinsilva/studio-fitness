@@ -753,6 +753,18 @@ class CalendarioMesTests(TestCase):
             reverse("agenda:grade") + f"?data={primeiro_dia['data'].isoformat()}",
         )
 
+    def test_ano_fora_do_intervalo_valido_cai_pro_mes_atual_em_vez_de_quebrar(self):
+        # `datetime.date` só aceita anos 1..9999 — sem tratar isso, `?ano=`
+        # fora da faixa (ou um número absurdamente grande) derrubava a
+        # página com erro 500 em vez de simplesmente ignorar o parâmetro.
+        hoje = timezone.localdate()
+        for querystring in ("?ano=0&mes=1", "?ano=-5&mes=3", "?ano=99999999999999&mes=1"):
+            with self.subTest(querystring=querystring):
+                response = self.client.get(reverse("agenda:mes") + querystring)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.context["ano"], hoje.year)
+                self.assertEqual(response.context["mes"], hoje.month)
+
 
 class MotorContagemPorMesTests(TestCase):
     """Teste unitário direto de `motor.contagem_por_mes_do_ano`, sem HTTP —
@@ -859,3 +871,14 @@ class CalendarioAnoTests(TestCase):
             response,
             reverse("agenda:mes") + f"?ano=2026&mes={mes['numero']}",
         )
+
+    def test_ano_fora_do_intervalo_valido_cai_pro_ano_atual_em_vez_de_quebrar(self):
+        # `datetime.date` só aceita anos 1..9999 — sem tratar isso, `?ano=`
+        # fora da faixa (ou um número absurdamente grande) derrubava a
+        # página com erro 500 em vez de simplesmente ignorar o parâmetro.
+        hoje = timezone.localdate()
+        for querystring in ("?ano=10000", "?ano=-1", "?ano=99999999999999"):
+            with self.subTest(querystring=querystring):
+                response = self.client.get(reverse("agenda:ano") + querystring)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.context["ano"], hoje.year)
