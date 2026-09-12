@@ -144,6 +144,13 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 .alerta.aviso { border-left-color: var(--ambar); }
 .alerta.critico { border-left-color: var(--vermelho); }
 
+/* Lista de alertas com altura limitada: por mais que a lista cresça, ela
+   rola dentro do próprio espaço em vez de esticar a página inteira. */
+.lista-alertas {
+  display: flex; flex-direction: column; gap: 10px;
+  max-height: 420px; overflow-y: auto; padding-right: 2px;
+}
+
 /* ---------- sugestões da agenda inteligente ---------- */
 .sugestoes-horario { display: flex; flex-wrap: wrap; gap: 8px; }
 .sugestao-item {
@@ -210,7 +217,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 .proxima .btn-verde:hover { background: #6da036; color: #17300a; }
 .proxima .btn-vazado { background: transparent; border: 1px solid #6a4a78; color: #fff; }
 .proxima .btn-vazado:hover { background: rgba(255,255,255,.08); color: #fff; }
-.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .kpi {
   background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--r-md);
   padding: 12px 10px; display: flex; flex-direction: column; gap: 2px;
@@ -301,7 +308,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 .legenda i.livre { background: var(--superficie); border: 1px dashed #b58ac4; }
 
 /* ---------- agenda: mini-KPIs do dia (cabeçalho da grade) ---------- */
-.kpis-dia { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* grid-template-columns já vem de .kpis (2 colunas no mobile, 4 no desktop) */
 .kpis-dia .kpi { text-decoration: none; }
 .kpi .valor.valor-sm { font-size: 13px; line-height: 1.3; }
 

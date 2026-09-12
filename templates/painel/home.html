@@ -55,14 +55,16 @@
             <span class="espaco"></span>
             <span style="font-size:12px;font-weight:600;color:var(--roxo)">{{ alertas|length }}</span>
         </div>
-        {% for alerta in alertas %}
-        <div class="alerta {% if alerta.nivel == 'aviso' %}aviso{% elif alerta.nivel == 'critico' %}critico{% endif %}">
-            <span style="font-weight:600;font-size:14px">{{ alerta.mensagem }}</span>
-            {% if alerta.detalhe %}<span class="detalhe">{{ alerta.detalhe }}</span>{% endif %}
+        <div class="lista-alertas">
+            {% for alerta in alertas %}
+            <div class="alerta {% if alerta.nivel == 'aviso' %}aviso{% elif alerta.nivel == 'critico' %}critico{% endif %}">
+                <span style="font-weight:600;font-size:14px">{{ alerta.mensagem }}</span>
+                {% if alerta.detalhe %}<span class="detalhe">{{ alerta.detalhe }}</span>{% endif %}
+            </div>
+            {% empty %}
+            <div class="card vazio">Nenhum alerta no momento.</div>
+            {% endfor %}
         </div>
-        {% empty %}
-        <div class="card vazio">Nenhum alerta no momento.</div>
-        {% endfor %}
     </div>
 </div>
 
