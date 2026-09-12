@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Agenda — {{ ano }} — Studio Fitness{% endblock %}
+{% block content %}
+<div class="linha-titulo">
+    <h1>{{ ano }}</h1>
+    <a class="btn btn-secundario btn-sm" href="?ano={{ ano_anterior }}">‹</a>
+    <a class="btn btn-secundario btn-sm" href="?ano={{ ano_seguinte }}">›</a>
+    <span class="espaco"></span>
+    {% if not eh_ano_atual %}<a class="btn btn-secundario btn-sm" href="{% url 'agenda:ano' %}">Ano atual</a>{% endif %}
+</div>
+
+{% include "agenda/_abas_visao.html" with visao="ano" %}
+
+<div class="kpis" style="margin-bottom:12px">
+    <div class="kpi"><span class="valor">{{ total_ano }}</span><span class="nome">Sessões no ano</span></div>
+</div>
+
+<div class="grade-meses">
+    {% for m in meses %}
+    <a class="card mes-card{% if m.atual %} atual{% endif %}"
+       href="{% url 'agenda:mes' %}?ano={{ ano }}&mes={{ m.numero }}">
+        <span class="nome-mes">{{ m.referencia|date:"F" }}</span>
+        <span class="valor">{{ m.qtd }}</span>
+        <span class="nome">sessões</span>
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

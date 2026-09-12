@@ -6,7 +6,7 @@ ativo, habilitado ao tipo de sessão, dentro da disponibilidade cadastrada
 e sem conflito de horário; aluno sem conflito de horário; equipamento
 exigido quando o tipo de sessão precisa dele, ativo e livre.
 """
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from django.db.models import Count
@@ -516,3 +516,16 @@ def contagem_por_dia(inicio, fim):
         .order_by("dia")
     )
     return {linha["dia"]: linha["qtd"] for linha in linhas}
+
+
+def contagem_por_mes_do_ano(ano):
+    """Quantidade de sessões não canceladas por mês, no ano inteiro.
+    Reaproveita `contagem_por_dia` numa única query (ano inteiro) e soma
+    os dias em Python — não vale a pena uma segunda agregação SQL (TruncMonth)
+    só para isso. Devolve {mes: qtd} para os 12 meses (1..12), mesmo os sem
+    sessão nenhuma (qtd=0)."""
+    por_dia = contagem_por_dia(date(ano, 1, 1), date(ano, 12, 31))
+    por_mes = {mes: 0 for mes in range(1, 13)}
+    for dia, qtd in por_dia.items():
+        por_mes[dia.month] += qtd
+    return por_mes

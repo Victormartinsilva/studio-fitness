@@ -1,8 +1,9 @@
 {% comment %}
-Navegação entre visões da agenda (dia/mês — ano vem numa etapa seguinte).
-Uso: {% include "agenda/_abas_visao.html" with visao="dia" %} (ou "mes").
+Navegação entre visões da agenda (dia/mês/ano).
+Uso: {% include "agenda/_abas_visao.html" with visao="dia" %} (ou "mes"/"ano").
 {% endcomment %}
 <div class="abas" style="max-width:320px;margin-bottom:16px">
     <a href="{% url 'agenda:grade' %}#dia-atual" class="{% if visao == 'dia' %}ativo{% endif %}">Dia</a>
     <a href="{% url 'agenda:mes' %}" class="{% if visao == 'mes' %}ativo{% endif %}">Mês</a>
+    <a href="{% url 'agenda:ano' %}" class="{% if visao == 'ano' %}ativo{% endif %}">Ano</a>
 </div>

@@ -416,6 +416,13 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 .dia-mes.hoje { background: var(--roxo); color: #fff; }
 .dia-mes.hoje .num { color: #fff; }
 
+/* ---------- agenda: visão de ano ---------- */
+.grade-meses { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.mes-card { display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: var(--ink); }
+.mes-card .nome-mes { font-size: 12px; font-weight: 600; color: var(--ink-3); text-transform: capitalize; }
+.mes-card .valor { font-family: "Outfit", sans-serif; font-size: 26px; font-weight: 700; color: var(--roxo); line-height: 1.2; }
+.mes-card.atual { border-color: var(--roxo); }
+
 /* ---------- agenda: linha de professores do dia ---------- */
 .linha-professores { margin-bottom: 12px; }
 .chip.livre::after {

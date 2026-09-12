@@ -69,3 +69,33 @@ def mes(request):
         "ano_mes_seguinte": ano_mes_seguinte, "mes_seguinte": mes_seguinte,
         "eh_mes_atual": ano == hoje.year and mes_num == hoje.month,
     })
+
+
+@login_required
+def ano(request):
+    hoje = timezone.localdate()
+    try:
+        ano_num = int(request.GET.get("ano", hoje.year))
+    except (TypeError, ValueError):
+        ano_num = hoje.year
+
+    por_mes = motor.contagem_por_mes_do_ano(ano_num)
+    meses = [
+        {
+            "numero": m,
+            "referencia": date(ano_num, m, 1),
+            "qtd": por_mes[m],
+            "atual": ano_num == hoje.year and m == hoje.month,
+        }
+        for m in range(1, 13)
+    ]
+
+    return render(request, "agenda/ano.html", {
+        "aba": "agenda",
+        "ano": ano_num,
+        "meses": meses,
+        "total_ano": sum(por_mes.values()),
+        "ano_anterior": ano_num - 1,
+        "ano_seguinte": ano_num + 1,
+        "eh_ano_atual": ano_num == hoje.year,
+    })

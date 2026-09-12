@@ -752,3 +752,110 @@ class CalendarioMesTests(TestCase):
             response,
             reverse("agenda:grade") + f"?data={primeiro_dia['data'].isoformat()}",
         )
+
+
+class MotorContagemPorMesTests(TestCase):
+    """Teste unitário direto de `motor.contagem_por_mes_do_ano`, sem HTTP —
+    mesmo padrão de `ContagemPorDiaTests`."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45)
+        usuario = Usuario.objects.create_user("bia", papel=Usuario.Papel.PROFESSOR)
+        self.professor = Professor.objects.create(usuario=usuario)
+        self.professor.tipos_habilitados.add(self.tipo)
+        self.aluno = Aluno.objects.create(nome="Mariana")
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+
+    def test_soma_por_mes_e_ignora_cancelada(self):
+        ano = timezone.localdate().year + 1  # ano fixo e sem sessões de outros testes
+
+        for mes, dia, qtd in [(3, 10, 2), (3, 20, 1), (8, 5, 1)]:
+            for hora in range(9, 9 + qtd):
+                inicio = timezone.make_aware(
+                    datetime(ano, mes, dia) + timedelta(hours=hora)
+                )
+                servicos.agendar(
+                    professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+                    equipamento=self.equipamento, inicio=inicio, fim=inicio + timedelta(minutes=45),
+                )
+
+        inicio_cancelada = timezone.make_aware(datetime(ano, 12, 1, 10))
+        sessao_cancelada = servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento, inicio=inicio_cancelada, fim=inicio_cancelada + timedelta(minutes=45),
+        )
+        servicos.cancelar(sessao=sessao_cancelada)
+
+        por_mes = motor.contagem_por_mes_do_ano(ano)
+
+        self.assertEqual(por_mes[3], 3)
+        self.assertEqual(por_mes[8], 1)
+        self.assertEqual(por_mes[12], 0)
+        self.assertEqual(por_mes[1], 0)
+        self.assertEqual(len(por_mes), 12)
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class CalendarioAnoTests(TestCase):
+    """Visão de ano (`agenda:ano`): 12 meses em cards, contagem por mês e
+    navegação entre anos."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45, preparo_min=10, troca_min=10)
+        usuario_gestor = Usuario.objects.create_user(
+            "gestor", password="teste12345", papel=Usuario.Papel.GESTOR
+        )
+        self.gestor = usuario_gestor
+        usuario = Usuario.objects.create_user("bia", password="teste12345", papel=Usuario.Papel.PROFESSOR)
+        self.professor = Professor.objects.create(usuario=usuario)
+        self.professor.tipos_habilitados.add(self.tipo)
+        self.aluno = Aluno.objects.create(nome="Mariana")
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+        self.client.force_login(self.gestor)
+
+    def test_sem_parametro_usa_o_ano_atual(self):
+        hoje = timezone.localdate()
+
+        response = self.client.get(reverse("agenda:ano"))
+
+        self.assertEqual(response.context["ano"], hoje.year)
+
+    def test_soma_totais_por_mes_corretamente(self):
+        ano = timezone.localdate().year
+
+        inicio_marco = timezone.make_aware(datetime(ano, 3, 10, 9))
+        inicio_agosto_1 = timezone.make_aware(datetime(ano, 8, 5, 9))
+        inicio_agosto_2 = timezone.make_aware(datetime(ano, 8, 5, 11))
+        for inicio in (inicio_marco, inicio_agosto_1, inicio_agosto_2):
+            servicos.agendar(
+                professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+                equipamento=self.equipamento, inicio=inicio, fim=inicio + timedelta(minutes=45),
+            )
+
+        response = self.client.get(reverse("agenda:ano") + f"?ano={ano}")
+
+        self.assertEqual(response.context["total_ano"], 3)
+        meses = {m["numero"]: m["qtd"] for m in response.context["meses"]}
+        self.assertEqual(meses[3], 1)
+        self.assertEqual(meses[8], 2)
+        self.assertEqual(meses[1], 0)
+
+    def test_navegacao_entre_anos(self):
+        response = self.client.get(reverse("agenda:ano") + "?ano=2026")
+
+        self.assertEqual(response.context["ano_anterior"], 2025)
+        self.assertEqual(response.context["ano_seguinte"], 2027)
+
+    def test_clicar_num_mes_leva_para_o_calendario_daquele_mes(self):
+        response = self.client.get(reverse("agenda:ano") + "?ano=2026")
+
+        mes = response.context["meses"][2]  # março
+        self.assertContains(
+            response,
+            reverse("agenda:mes") + f"?ano=2026&mes={mes['numero']}",
+        )
