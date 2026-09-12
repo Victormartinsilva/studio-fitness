@@ -8,7 +8,7 @@ from django.utils import timezone
 from apps.cadastros.models import Aluno, Equipamento, Professor, TipoSessao
 from apps.contas.models import Usuario
 
-from . import expediente, motor, servicos
+from . import expediente, grade as grade_modulo, motor, servicos
 from .models import BloqueioEquipamento, DisponibilidadeProfessor, Sessao
 
 
@@ -378,6 +378,48 @@ class GradeClicavelTests(TestCase):
         self.assertContains(response, f'value="{self.equipamento.id}" selected')
 
 
+class VagasLivresAlturaMinimaTests(TestCase):
+    """`_vagas_livres` deve garantir uma altura visual mínima (~40px, alvo
+    de toque) pro bloco "vaga livre", sem nunca ultrapassar o fim real do
+    gap nem sobrepor o próximo slot dentro do mesmo gap."""
+
+    def setUp(self):
+        self.dia = timezone.localdate() + timedelta(days=1)
+        self.agora = timezone.now()
+        self.limite = (grade_modulo.HORA_FIM - grade_modulo.HORA_INICIO) * 60
+
+    def test_slot_unico_com_folga_cresce_ate_o_fim_do_gap_sem_ultrapassar(self):
+        # Ocupado a partir do minuto 32 até o fim do expediente -> só resta
+        # um gap de 32min (0 a 32): um slot de 30min (36px) mais 2min de
+        # folga, que devem virar altura extra sem passar de 32min (38.4px).
+        vagas = grade_modulo._vagas_livres([(32, self.limite)], self.dia, 1, self.agora)
+
+        self.assertEqual(len(vagas), 1)
+        self.assertEqual(vagas[0]["top"], "0.0")
+        altura_maxima_do_gap = 32 * grade_modulo.PX_POR_MIN
+        self.assertEqual(vagas[0]["altura"], "{:.1f}".format(altura_maxima_do_gap))
+        self.assertLess(float(vagas[0]["altura"]), grade_modulo.ALTURA_MIN_VAGA_PX)
+
+    def test_slots_intermediarios_de_um_gap_maior_nao_se_sobrepoem(self):
+        # Gap de 50min (0 a 50) -> dois slots (30min + 20min). O primeiro
+        # não pode crescer (tem vizinho colado embaixo); só o último, que
+        # encosta no fim real do gap, pode.
+        vagas = grade_modulo._vagas_livres([(50, self.limite)], self.dia, 1, self.agora)
+
+        self.assertEqual(len(vagas), 2)
+        primeiro, segundo = vagas
+        self.assertEqual(primeiro["top"], "0.0")
+        self.assertEqual(primeiro["altura"], "{:.1f}".format(30 * grade_modulo.PX_POR_MIN))
+        self.assertEqual(segundo["top"], "{:.1f}".format(30 * grade_modulo.PX_POR_MIN))
+        self.assertEqual(segundo["altura"], "{:.1f}".format(20 * grade_modulo.PX_POR_MIN))
+        # fim do primeiro bloco (top + altura) não passa do início do segundo.
+        fim_primeiro = float(primeiro["top"]) + float(primeiro["altura"])
+        self.assertLessEqual(fim_primeiro, float(segundo["top"]))
+        # fim do segundo bloco não passa do fim real do gap.
+        fim_segundo = float(segundo["top"]) + float(segundo["altura"])
+        self.assertLessEqual(fim_segundo, 50 * grade_modulo.PX_POR_MIN + 1e-6)
+
+
 class SugerirHorariosTests(TestCase):
     """Agenda inteligente: quando o horário/equipamento pedido não serve,
     o motor deve sugerir alternativas livres para o mesmo professor/tipo."""
@@ -524,6 +566,48 @@ class GradeInteligenteTests(TestCase):
         response = self.client.get(url)
 
         self.assertNotContains(response, "sessao outra")
+
+    def test_equipamento_em_manutencao_aparece_depois_dos_ativos_na_ordem_das_colunas(self):
+        # Nome propositalmente "menor" (viria primeiro em ordenação
+        # alfabética) pra garantir que quem manda é o status, não o nome.
+        equipamento_manutencao = Equipamento.objects.create(
+            nome="Equip. 00", status=Equipamento.Status.MANUTENCAO
+        )
+        self.client.force_login(self.gestor)
+
+        url = reverse("agenda:grade") + f"?data={self.dia.isoformat()}"
+        response = self.client.get(url)
+
+        equipamentos_na_ordem = [coluna["equipamento"] for coluna in response.context["colunas"]]
+        self.assertEqual(equipamentos_na_ordem, [self.equipamento, equipamento_manutencao])
+
+    def test_scroll_inicial_top_aponta_para_o_primeiro_bloco_ocupado_quando_nao_e_hoje(self):
+        # `self.dia` é sempre amanhã (ver setUp), então nunca mostra a
+        # "linha do agora" — o fallback precisa apontar pro início da
+        # reserva do equipamento (que já inclui o preparo), não pro início
+        # da sessão em si.
+        sessao = self._agenda(self.professor_a, hora=10)
+        self.client.force_login(self.gestor)
+
+        url = reverse("agenda:grade") + f"?data={self.dia.isoformat()}"
+        response = self.client.get(url)
+
+        self.assertFalse(response.context["mostrar_linha_agora"])
+        reserva_inicio_local = timezone.localtime(sessao.reserva_inicio)
+        minutos_esperados = (
+            (reserva_inicio_local.hour - grade_modulo.HORA_INICIO) * 60 + reserva_inicio_local.minute
+        )
+        esperado = "{:.1f}".format(minutos_esperados * grade_modulo.PX_POR_MIN)
+        self.assertEqual(response.context["scroll_inicial_top"], esperado)
+        self.assertContains(response, f'data-scroll-inicial-top="{esperado}"')
+
+    def test_scroll_inicial_top_vazio_quando_dia_sem_nenhuma_sessao_ou_bloqueio(self):
+        self.client.force_login(self.gestor)
+
+        url = reverse("agenda:grade") + f"?data={self.dia.isoformat()}"
+        response = self.client.get(url)
+
+        self.assertIsNone(response.context["scroll_inicial_top"])
 
 
 @override_settings(

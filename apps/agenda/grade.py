@@ -28,6 +28,8 @@ GAP_PX = 3               # espaço visual entre reservas distintas (evita blocos
 DIAS_ANTES_NA_FAIXA = 7  # quantos dias antes do selecionado aparecem na faixa rolável
 DIAS_DEPOIS_NA_FAIXA = 14  # quantos dias depois do selecionado aparecem na faixa rolável
 
+ALTURA_MIN_VAGA_PX = 40  # alvo mínimo de altura visual do bloco "vaga livre" (alvo de toque ~44px)
+
 # Limiares (em quantidade de sessões não canceladas no dia) para o nível de
 # "movimento" mostrado na faixa de dias. São limiares fixos e simples (não
 # derivados da capacidade real de equipamentos/professores) — o objetivo é só
@@ -116,6 +118,18 @@ def _vagas_livres(ocupados, dia, equipamento_id, agora, professor_id=None):
                 break
             hh, mm = divmod(HORA_INICIO * 60 + m, 60)
             momento = timezone.make_aware(datetime.combine(dia, time(hh, mm)))
+            # Altura visual mínima (~40px) pra não ficar abaixo do alvo de
+            # toque recomendado: só cresce quando este é o ÚLTIMO slot do
+            # gap (nenhum outro slot vai nascer depois dele nesta janela —
+            # mesma condição de `break` acima, olhando pro que resta após
+            # `fim_slot`), senão cresceria por cima do próximo bloco "vaga"
+            # vizinho. O teto é sempre o fim real do gap (`fim_gap`), nunca
+            # inventa tempo livre que não existe.
+            altura_px = (fim_slot - m) * PX_POR_MIN
+            eh_ultimo_slot_do_gap = (fim_gap - fim_slot) < SLOT_MIN_MINIMO
+            if eh_ultimo_slot_do_gap:
+                altura_max_px = (fim_gap - m) * PX_POR_MIN
+                altura_px = min(max(altura_px, ALTURA_MIN_VAGA_PX), altura_max_px)
             if momento >= agora:
                 href = "{}?data={}&hora_inicio={:02d}:{:02d}&equipamento={}".format(
                     reverse("agenda:agendar"), dia.isoformat(), hh, mm, equipamento_id
@@ -125,7 +139,7 @@ def _vagas_livres(ocupados, dia, equipamento_id, agora, professor_id=None):
                 vagas.append(
                     {
                         "top": "{:.1f}".format(m * PX_POR_MIN),
-                        "altura": "{:.1f}".format((fim_slot - m) * PX_POR_MIN),
+                        "altura": "{:.1f}".format(altura_px),
                         "titulo": "{:02d}:{:02d}".format(hh, mm),
                         "href": href,
                     }
@@ -153,6 +167,10 @@ def grade(request):
     bloqueios = list(BloqueioEquipamento.objects.filter(inicio__lt=fim_dia, fim__gt=inicio_dia))
 
     equipamentos = list(Equipamento.objects.exclude(status=Equipamento.Status.INATIVO))
+    # Equipamento ativo primeiro, em manutenção depois — `sorted` é estável,
+    # então dentro de cada grupo mantém a ordem original (por nome, do
+    # `Meta.ordering` do model).
+    equipamentos = sorted(equipamentos, key=lambda e: e.status != Equipamento.Status.ATIVO)
     pode_agendar = request.user.is_superuser or request.user.is_gestor or request.user.is_professor
     agora = timezone.now()
 
@@ -182,6 +200,11 @@ def grade(request):
     sessoes_canceladas_no_dia = resumo["por_status"].get(Sessao.Status.CANCELADA, 0)
     total_sessoes = resumo["total_sessoes"] - sessoes_canceladas_no_dia
     ocupacao = resumo["ocupacao_pct"]
+
+    # Menor `inicio_min` entre todas as sessões/bloqueios do dia, em todas as
+    # colunas — usado como posição de fallback pro auto-scroll inicial (item
+    # 7) quando não é hoje (sem "linha do agora" pra mirar).
+    menor_inicio_ocupado_min = None
 
     colunas = []
     for equipamento in equipamentos:
@@ -234,6 +257,11 @@ def grade(request):
                     inset_base=True,
                 )
             )
+        if ocupados:
+            candidato = min(inicio_min for inicio_min, _ in ocupados)
+            if menor_inicio_ocupado_min is None or candidato < menor_inicio_ocupado_min:
+                menor_inicio_ocupado_min = candidato
+
         vagas = []
         if pode_agendar and equipamento.status == Equipamento.Status.ATIVO:
             professor_id_para_vaga = professor_logado.id if professor_logado is not None else None
@@ -282,6 +310,15 @@ def grade(request):
     agora_local = timezone.localtime(agora)
     mostrar_linha_agora = dia == hoje and expediente.ABERTURA <= agora_local.time() < expediente.FECHAMENTO
     linha_agora_top = "{:.1f}".format(_offset(agora, dia)) if mostrar_linha_agora else None
+
+    # Auto-scroll ao abrir a página (item 7 da auditoria mobile): quando não
+    # há "linha do agora" pra mirar (outro dia, ou hoje fora do expediente),
+    # cai pro topo do primeiro bloco ocupado do dia entre todas as colunas —
+    # evita abrir a grade sempre no início do expediente (07:00), bem acima
+    # da dobra em qualquer dia com sessão marcada.
+    scroll_inicial_top = None
+    if not mostrar_linha_agora and menor_inicio_ocupado_min is not None:
+        scroll_inicial_top = "{:.1f}".format(menor_inicio_ocupado_min * PX_POR_MIN)
 
     # Próxima vaga do dia (qualquer professor/equipamento), pronta pra virar
     # link de agendamento pré-preenchido.
@@ -345,6 +382,7 @@ def grade(request):
             "linha_professores": linha_professores,
             "mostrar_linha_agora": mostrar_linha_agora,
             "linha_agora_top": linha_agora_top,
+            "scroll_inicial_top": scroll_inicial_top,
             "pode_agendar": pode_agendar,
             "mostrar_legenda_propria": professor_destaque_id is not None,
             "filtro_professor_ativo": filtro_professor_ativo,

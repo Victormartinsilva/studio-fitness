@@ -255,22 +255,58 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 }
 .calendario-form input[type="date"] { font: inherit; }
 
+/* ---------- agenda: linha de professores do dia, recolhível ---------- */
+/* Mesmo padrão visual do `.calendario-picker` acima (details/summary),
+   só com um resumo mais discreto — a linha de chips não precisa do
+   destaque de título de página, só de um rótulo curto pra abrir/fechar. */
+.professores-picker summary {
+  cursor: pointer; list-style: none; padding: 6px 2px;
+  font-size: 13px; font-weight: 600; color: var(--ink-2);
+}
+.professores-picker summary::-webkit-details-marker { display: none; }
+.professores-picker summary::after { content: " \25BE"; font-size: 12px; color: var(--ink-4); }
+.professores-picker[open] summary::after { content: " \25B4"; }
+.professores-picker .linha-professores { margin: 6px 0 0; }
+
 /* ---------- agenda: grade por equipamento ---------- */
 .grade {
   background: var(--superficie); border: 1px solid var(--borda);
-  border-radius: var(--r-lg); overflow: hidden; display: flex;
+  border-radius: var(--r-lg); display: flex;
+  /* Sem `overflow: hidden` aqui de propósito: qualquer ancestral com
+     overflow diferente de `visible` vira o "scroll container" de
+     referência do `position: sticky` dos filhos — e como é a janela
+     (documento) que rola verticalmente, não este elemento, o cabeçalho
+     sticky da coluna (`.grade .cabeca`) pararia de acompanhar o scroll.
+     Custo: os cantos arredondados não recortam o conteúdo internamente
+     (efeito visual mínimo, o fundo já é o mesmo branco). */
 }
 .grade .horas { width: 50px; flex: none; border-right: 1px solid #f0ebf3; padding-top: 40px; }
 .grade .horas .hora {
   font-size: 11px; font-weight: 500; color: var(--ink-4);
   text-align: right; padding-right: 8px;
 }
-.grade .colunas { flex: 1; display: flex; overflow-x: auto; scroll-snap-type: x proximity; }
+.grade .colunas {
+  flex: 1; display: flex; overflow-x: auto; scroll-snap-type: x proximity;
+  /* Sinaliza visualmente que há mais colunas fora da tela (item B da
+     auditoria mobile): esmaece as bordas esquerda/direita com uma máscara
+     — some sozinha quando não há mais o que rolar naquele lado. */
+  mask-image: linear-gradient(to right, transparent 0, black 12px, black calc(100% - 12px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, black 12px, black calc(100% - 12px), transparent 100%);
+}
 .grade .coluna { flex: 1 0 46%; min-width: 140px; border-right: 1px solid #f0ebf3; scroll-snap-align: start; }
 .grade .coluna:last-child { border-right: none; }
 .grade .cabeca {
   height: 40px; display: flex; align-items: center; justify-content: center; gap: 6px;
-  border-bottom: 1px solid #f0ebf3; font-size: 12px; font-weight: 600; color: var(--ink-2);
+  padding: 0 6px; border-bottom: 1px solid #f0ebf3; font-size: 12px; font-weight: 600; color: var(--ink-2);
+  /* Sticky: mantém o nome do equipamento visível ao rolar a pista
+     verticalmente. `top` = altura do `.topbar` fixo (58px no mobile;
+     ajustado para 62px no breakpoint desktop abaixo). */
+  position: sticky; top: 58px; z-index: 10; background: var(--superficie);
+}
+.grade .cabeca .nome-equip {
+  min-width: 0; flex: 0 1 auto;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%; display: block;
 }
 .grade .pista { position: relative; }
 .grade .bloco {
@@ -292,12 +328,16 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 .grade .bloco.bloqueio .quem { font-size: 11px; font-weight: 600; line-height: 1.2; }
 .grade .bloco.bloqueio .quem2 { font-size: 10px; line-height: 1.3; color: #7b7185; }
 .grade .bloco.livre {
-  background: var(--superficie); border: 1px dashed #b58ac4; color: var(--roxo);
+  /* "Verde = disponível" é a mesma linguagem já usada em `.chip.livre::after`
+     e `.barra-dia.nivel-baixo` — antes este bloco usava fundo branco com
+     borda tracejada, visualmente parecido com preparo/troca/bloqueio, o
+     que confundia justamente o principal call-to-action da tela. */
+  background: var(--verde-fundo); border: 1px solid var(--verde); color: var(--verde-texto);
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none;
   transition: background .12s ease, border-color .12s ease;
 }
-.grade .bloco.livre:hover { background: var(--roxo-claro); border-color: var(--roxo); }
+.grade .bloco.livre:hover { background: var(--verde); border-color: var(--verde); color: #17300a; }
 .legenda { display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 2px 0; }
 .legenda span.item-legenda { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-3); }
 .legenda i { width: 12px; height: 12px; border-radius: 3px; display: block; }
@@ -305,10 +345,16 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 .legenda i.sessao.outra { background: #cdb9d6; }
 .legenda i.preparo { background: var(--hachura); }
 .legenda i.bloqueio { background: var(--hachura-cinza); border: 1px dashed #c3bac9; }
-.legenda i.livre { background: var(--superficie); border: 1px dashed #b58ac4; }
+.legenda i.livre { background: var(--verde-fundo); border: 1px solid var(--verde); }
 
 /* ---------- agenda: mini-KPIs do dia (cabeçalho da grade) ---------- */
-/* grid-template-columns já vem de .kpis (2 colunas no mobile, 4 no desktop) */
+/* Específico da grade (não é o `.kpis` genérico usado no painel): sempre
+   uma única linha de 4 células, mesmo no mobile — os valores são curtos
+   (número, %, hora) então cabem lado a lado sem precisar de 2x2. O
+   tamanho de fonte/padding reduzido fica só no breakpoint estreito (ver
+   `@media (max-width: 599px)` no fim do arquivo); no desktop o
+   `.kpis-dia` mantém o tamanho normal do `.kpi`. */
+.kpis-dia { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .kpis-dia .kpi { text-decoration: none; }
 .kpi .valor.valor-sm { font-size: 13px; line-height: 1.3; }
 
@@ -541,7 +587,15 @@ dialog.modal-cartao[open] {
   .item .acoes { flex: none; justify-content: flex-start; padding-top: 0; }
   .grade .horas { width: 62px; }
   .grade .horas .hora { font-size: 12px; padding-right: 10px; }
-  .grade .colunas { overflow: visible; }
+  /* No desktop o `.topbar` mede 62px (regra acima), não 58px — ajusta o
+     ponto de referência do cabeçalho sticky da coluna. */
+  .grade .cabeca { top: 62px; }
+  .grade .colunas {
+    overflow: visible;
+    /* sem scroll horizontal no desktop (colunas cabem todas), então não
+       precisa do indicador de "tem mais conteúdo fora da tela". */
+    mask-image: none; -webkit-mask-image: none;
+  }
   .grade .coluna { flex: 1 1 0; min-width: 0; }
   .grade .bloco { left: 6px; right: 6px; border-radius: 8px; padding: 6px 10px; }
   .grade .bloco.sessao .quem { font-size: 12px; }
@@ -561,4 +615,22 @@ dialog.modal-cartao[open] {
     box-shadow: 0 20px 60px rgba(36,16,44,.28);
   }
   .assistente-form { padding-bottom: 12px; }
+}
+
+/* ---------- mobile estreito (celular) ---------- */
+/* Ajustes da grade da agenda para telas ~375-599px: mais colunas de
+   equipamento visíveis por vez e KPIs do dia mais compactos. Não altera
+   nada do comportamento desktop (regras isoladas neste breakpoint). */
+@media (max-width: 599px) {
+  .grade .coluna { min-width: 115px; }
+  .grade .bloco { padding: 4px 6px; }
+  .grade .bloco.sessao .quem { font-size: 10px; }
+  /* Linha secundária ("Bia · Eletroestimulação") é a primeira a sair
+     quando o espaço aperta — a linha principal (hora + aluno) continua
+     visível, que é a informação indispensável pra reconhecer a sessão. */
+  .grade .bloco.sessao .quem2, .grade .bloco.bloqueio .quem2 { display: none; }
+  .kpis-dia .kpi { padding: 8px 6px; }
+  .kpis-dia .kpi .valor { font-size: 15px; }
+  .kpis-dia .kpi .valor.valor-sm { font-size: 11px; }
+  .kpis-dia .kpi .nome { font-size: 9px; }
 }

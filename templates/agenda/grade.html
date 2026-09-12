@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Agenda — Studio Fitness{% endblock %}
 {% block content %}
 <div class="linha-titulo">
@@ -43,17 +44,20 @@
 </div>
 
 {% if linha_professores %}
-<div class="chips linha-professores" style="margin-bottom:12px">
-    {% for item in linha_professores %}
-    <a class="chip{% if item.destaque %} ativo{% endif %}{% if item.livre %} livre{% endif %}" href="{{ item.href }}">
-        {{ item.professor }} · {{ item.qtd }}
-    </a>
-    {% endfor %}
-</div>
+<details class="professores-picker" style="margin-bottom:12px" {% if filtro_professor_ativo %}open{% endif %}>
+    <summary>Professores do dia</summary>
+    <div class="chips linha-professores">
+        {% for item in linha_professores %}
+        <a class="chip{% if item.destaque %} ativo{% endif %}{% if item.livre %} livre{% endif %}" href="{{ item.href }}">
+            {{ item.professor }} · {{ item.qtd }}
+        </a>
+        {% endfor %}
+    </div>
+</details>
 {% endif %}
 
 
-<div class="grade">
+<div class="grade" data-linha-agora-top="{{ linha_agora_top|default:'' }}" data-scroll-inicial-top="{{ scroll_inicial_top|default:'' }}">
     <div class="horas">
         {% for hora in horas %}
         <div class="hora" style="height:{{ altura_hora }}px">{{ hora }}</div>
@@ -63,7 +67,7 @@
         {% for coluna in colunas %}
         <div class="coluna">
             <div class="cabeca">
-                {{ coluna.equipamento.nome }}
+                <span class="nome-equip">{{ coluna.equipamento.nome }}</span>
                 {% if coluna.equipamento.status != 'ativo' %}
                 <span class="tag aviso">{{ coluna.equipamento.get_status_display|lower }}</span>
                 {% endif %}
@@ -102,4 +106,6 @@
     <span class="item-legenda"><i class="bloqueio"></i>Bloqueio</span>
     {% if pode_agendar %}<span class="item-legenda"><i class="livre"></i>Horário livre — clique para agendar</span>{% endif %}
 </div>
+
+<script src="{% static 'js/agenda.js' %}" defer></script>
 {% endblock %}
