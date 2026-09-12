@@ -533,8 +533,10 @@ class GradeInteligenteTests(TestCase):
     }
 )
 class PainelEGradeOcupacaoTests(TestCase):
-    """Bug confirmado: painel e grade calculavam ocupação de formas
-    diferentes. Agora ambos usam `motor.resumo_do_dia` e devem bater."""
+    """Bug original: painel e grade calculavam ocupação de formas diferentes.
+    O painel não exibe mais o percentual de ocupação (fica só na agenda, que
+    já mostra o dado — ver `templates/painel/home.html`), mas a grade
+    continua usando `motor.resumo_do_dia` como única fonte da verdade."""
 
     def setUp(self):
         self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45, preparo_min=10, troca_min=10)
@@ -548,7 +550,7 @@ class PainelEGradeOcupacaoTests(TestCase):
         self.aluno = Aluno.objects.create(nome="Mariana")
         self.equipamento = Equipamento.objects.create(nome="Equip. 01")
 
-    def test_painel_e_grade_mostram_a_mesma_ocupacao_hoje(self):
+    def test_grade_mostra_a_ocupacao_de_resumo_do_dia(self):
         hoje = timezone.localdate()
         inicio = timezone.make_aware(datetime.combine(hoje, datetime.min.time()) + timedelta(hours=10))
         fim = inicio + timedelta(minutes=self.tipo.duracao_min)
@@ -558,9 +560,15 @@ class PainelEGradeOcupacaoTests(TestCase):
         )
         self.client.force_login(self.gestor)
 
-        resposta_painel = self.client.get(reverse("painel:home"))
         resposta_grade = self.client.get(reverse("agenda:grade") + f"?data={hoje.isoformat()}")
 
         pct_esperado = motor.resumo_do_dia(hoje)["ocupacao_pct"]
-        self.assertContains(resposta_painel, f"{pct_esperado}%")
         self.assertContains(resposta_grade, f"{pct_esperado}%")
+
+    def test_painel_nao_mostra_mais_cards_de_ocupacao(self):
+        self.client.force_login(self.gestor)
+
+        resposta_painel = self.client.get(reverse("painel:home"))
+
+        self.assertNotContains(resposta_painel, "Ocupação hoje")
+        self.assertNotContains(resposta_painel, "Equipamentos ativos")
