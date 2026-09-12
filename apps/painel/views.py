@@ -31,7 +31,9 @@ def home(request):
 
     kpis = []
     if usuario.is_superuser or usuario.is_gestor:
-        resumo = motor.resumo_do_dia(hoje)
+        # Painel não usa "próxima vaga" — pula o cálculo mais caro de
+        # resumo_do_dia (um buscar_vagas por tipo de sessão ativo).
+        resumo = motor.resumo_do_dia(hoje, incluir_proxima_vaga=False)
         sessoes_canceladas_hoje = resumo["por_status"].get(Sessao.Status.CANCELADA, 0)
         kpis = [
             {"valor": "{}%".format(resumo["ocupacao_pct"]), "nome": "Ocupação hoje"},

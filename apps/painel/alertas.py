@@ -14,9 +14,11 @@ def gerar_alertas(usuario):
     agora = timezone.now()
     daqui_a_pouco = agora + timedelta(hours=24)
 
-    sessoes = Sessao.objects.filter(
-        inicio__gte=agora, inicio__lte=daqui_a_pouco
-    ).exclude(status=Sessao.Status.CANCELADA)
+    sessoes = (
+        Sessao.objects.filter(inicio__gte=agora, inicio__lte=daqui_a_pouco)
+        .exclude(status=Sessao.Status.CANCELADA)
+        .select_related("aluno", "professor__usuario")
+    )
 
     if usuario.is_professor and hasattr(usuario, "professor"):
         sessoes = sessoes.filter(professor=usuario.professor)

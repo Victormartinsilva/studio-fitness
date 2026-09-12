@@ -177,7 +177,10 @@ def grade(request):
         professor_destaque_id = professor_logado.id
     filtro_professor_ativo = professor_destaque_id is not None and bool(filtro_professor_id)
 
-    resumo = motor.resumo_do_dia(dia)
+    # A grade não mostra mais "próxima vaga" (KPI removido) — pula o
+    # cálculo mais caro de resumo_do_dia, que aqui só serve pra
+    # `linha_professores` (via `por_professor`).
+    resumo = motor.resumo_do_dia(dia, incluir_proxima_vaga=False)
 
     # Menor `inicio_min` entre todas as sessões/bloqueios do dia, em todas as
     # colunas — usado como posição de fallback pro auto-scroll inicial (item
@@ -325,7 +328,6 @@ def grade(request):
             "aba": "agenda",
             "data": dia,
             "hoje": hoje,
-            "dia_eh_hoje": dia == hoje,
             "dia_anterior": dia - timedelta(days=1),
             "dia_seguinte": dia + timedelta(days=1),
             "faixa_dias": faixa_dias,

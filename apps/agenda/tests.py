@@ -765,6 +765,19 @@ class CalendarioMesTests(TestCase):
                 self.assertEqual(response.context["ano"], hoje.year)
                 self.assertEqual(response.context["mes"], hoje.month)
 
+    def test_ano_mes_no_limite_do_calendario_cai_pro_mes_atual_em_vez_de_quebrar(self):
+        # ano=1/mes=1 e ano=9999/mes=12 passam pela validação de "é uma data
+        # válida", mas os dias de padding no início/fim da grade (pra
+        # completar a semana) pertencem ao ano anterior/seguinte — ano 0 ou
+        # 10000, que não existem — e derrubavam a página mesmo assim.
+        hoje = timezone.localdate()
+        for querystring in ("?ano=1&mes=1", "?ano=9999&mes=12"):
+            with self.subTest(querystring=querystring):
+                response = self.client.get(reverse("agenda:mes") + querystring)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.context["ano"], hoje.year)
+                self.assertEqual(response.context["mes"], hoje.month)
+
 
 class MotorContagemPorMesTests(TestCase):
     """Teste unitário direto de `motor.contagem_por_mes_do_ano`, sem HTTP —

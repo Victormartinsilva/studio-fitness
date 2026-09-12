@@ -41,7 +41,16 @@ def mes(request):
     ano, mes_num = _mes_ano_seguro(request, hoje)
 
     cal = calendar.Calendar(firstweekday=DIA_SEMANA_INICIAL)
-    dias_do_mes = list(cal.itermonthdates(ano, mes_num))  # já vem em semanas completas
+    try:
+        # Mesmo com `ano`/`mes` validados, os dias de padding no início/fim
+        # da grade (pra completar a semana) pertencem ao mês anterior ou
+        # seguinte — perto dos limites de `date` (ano 1 ou 9999),
+        # `itermonthdates` pode precisar de um dia em ano 0 ou 10000 e
+        # levantar `ValueError` mesmo assim.
+        dias_do_mes = list(cal.itermonthdates(ano, mes_num))  # já vem em semanas completas
+    except ValueError:
+        ano, mes_num = hoje.year, hoje.month
+        dias_do_mes = list(cal.itermonthdates(ano, mes_num))
 
     contagem = motor.contagem_por_dia(dias_do_mes[0], dias_do_mes[-1])
 

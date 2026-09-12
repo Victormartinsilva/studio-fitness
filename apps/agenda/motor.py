@@ -388,7 +388,7 @@ def buscar_vagas(
     return vagas
 
 
-def resumo_do_dia(dia):
+def resumo_do_dia(dia, *, incluir_proxima_vaga=True):
     """Resumo administrativo do dia: contagens gerais, ocupação por
     equipamento e a próxima vaga livre (qualquer professor/equipamento).
 
@@ -396,7 +396,12 @@ def resumo_do_dia(dia):
     (inclusive canceladas, para mostrar o quanto foi cancelado); as demais
     métricas (`por_professor`, `por_equipamento`, `alunos_distintos`,
     `ocupacao_pct`) consideram só as sessões não canceladas, já que só
-    essas de fato ocupam professor/equipamento."""
+    essas de fato ocupam professor/equipamento.
+
+    `incluir_proxima_vaga=False` pula o cálculo de `proxima_vaga` (um
+    `buscar_vagas` por tipo de sessão ativo) quando o chamador não vai usar
+    esse campo — é o cálculo mais caro da função, então vale evitar quando
+    só se quer contagem/ocupação."""
     inicio_dia = timezone.make_aware(datetime.combine(dia, time.min))
     fim_dia = inicio_dia + timedelta(days=1)
 
@@ -461,7 +466,7 @@ def resumo_do_dia(dia):
 
     hoje = timezone.localdate()
     proxima_vaga = None
-    if dia >= hoje:
+    if incluir_proxima_vaga and dia >= hoje:
         candidatas = []
         for tipo in TipoSessao.objects.filter(ativo=True):
             encontradas = buscar_vagas(tipo_sessao=tipo, dia=dia, limite=1)
