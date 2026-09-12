@@ -127,6 +127,12 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 }
 .btn:hover, :where(button[type="submit"]):hover, :where(input[type="submit"]):hover { background: #5a2170; color: #fff; }
 .btn-sm { min-height: 36px; padding: 0 12px; font-size: 13px; border-radius: var(--r-sm); }
+/* Par ícone/texto usado pelos botões "Lista"/"Agendar sessão" da agenda
+   (`.btn-lista`/`.btn-agendar` em `grade.html`): por padrão (tablet/desktop)
+   o ícone fica oculto e só o texto aparece — igual já era antes de existir
+   esse par. No mobile estreito (`@media (max-width: 599px)` no fim do
+   arquivo) o par se inverte, pra caber o cabeçalho numa linha só. */
+.icone-btn { display: none; }
 .btn-secundario {
   background: var(--superficie); color: var(--roxo);
   border: 1px solid var(--borda-forte);
@@ -395,7 +401,22 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
   transition: background .12s ease, border-color .12s ease;
 }
 .grade .bloco.livre:hover { background: var(--verde); border-color: var(--verde); color: #17300a; }
-.legenda { display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 2px 0; }
+
+/* ---------- agenda: legenda das cores, recolhível no mobile ---------- */
+/* Mesmo padrão visual do `.calendario-picker`/`.professores-picker` acima
+   (details/summary, sem JS): fechada por padrão em qualquer tela — no
+   mobile é assim que fica (ganha espaço vertical logo abaixo da grade); no
+   desktop (`@media (min-width: 900px)` mais abaixo) o resumo é escondido e
+   o conteúdo é forçado sempre visível, então o comportamento observável lá
+   não muda em relação a antes (a legenda sempre aparecia). */
+.legenda summary {
+  cursor: pointer; list-style: none; padding: 6px 2px;
+  font-size: 13px; font-weight: 600; color: var(--ink-2);
+}
+.legenda summary::-webkit-details-marker { display: none; }
+.legenda summary::after { content: " \25BE"; font-size: 12px; color: var(--ink-4); }
+.legenda[open] summary::after { content: " \25B4"; }
+.legenda-conteudo { display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 2px 0; }
 .legenda span.item-legenda { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-3); }
 .legenda i { width: 12px; height: 12px; border-radius: 3px; display: block; }
 .legenda i.sessao { background: var(--roxo); }
@@ -562,7 +583,7 @@ dialog.modal-cartao[open] {
 .tabela-visoes input[type="checkbox"] { width: 20px; height: 20px; }
 
 /* ---------- abas segmentadas ---------- */
-.abas { display: flex; background: #f2eef5; border-radius: var(--r-md); padding: 3px; }
+.abas { display: flex; background: #f2eef5; border-radius: var(--r-md); padding: 3px; margin-bottom: 16px; }
 .abas a {
   flex: 1; text-align: center; padding: 9px 0; border-radius: var(--r-sm);
   font-size: 13px; font-weight: 500; color: var(--ink-3);
@@ -713,11 +734,19 @@ dialog.modal-cartao[open] {
     box-shadow: 0 20px 60px rgba(36,16,44,.28);
   }
   .assistente-form { padding-bottom: 12px; }
+  /* Legenda sempre visível no desktop, como já era antes de virar
+     `<details>` (ver comentário acima, na regra `.legenda summary`): some
+     o "Legenda ▾" clicável e força o conteúdo a aparecer, ignorando o
+     estado (aberto/fechado) do `<details>`. */
+  .legenda summary { display: none; }
+  .legenda .legenda-conteudo { display: flex !important; }
 }
 
 /* ---------- mobile estreito (celular) ---------- */
 /* Ajustes da grade da agenda para telas ~375-599px: mais colunas de
-   equipamento visíveis por vez e KPIs do dia mais compactos. Não altera
+   equipamento visíveis por vez, KPIs do dia mais compactos, e o "chrome"
+   da página (cabeçalho + navegação, abaixo) reduzido — o objetivo é que a
+   grade em si comece o mais próximo possível do topo da tela. Não altera
    nada do comportamento desktop (regras isoladas neste breakpoint). */
 @media (max-width: 599px) {
   .grade .coluna, .grade-cabecas .cabeca { min-width: 115px; }
@@ -731,4 +760,66 @@ dialog.modal-cartao[open] {
   .kpis-dia .kpi .valor { font-size: 15px; }
   .kpis-dia .kpi .valor.valor-sm { font-size: 11px; }
   .kpis-dia .kpi .nome { font-size: 9px; }
+
+  /* ---- cabeçalho da agenda (`.linha-titulo` em grade.html) numa linha só:
+     ‹ — título/picker do dia — › — Lista — Agendar, sem quebrar linha e
+     sem estourar a largura de um celular de 375px. `.espaco` (que empurrava
+     Lista/Agendar pra direita no layout desktop) só faz sentido quando há
+     espaço de sobra — aqui é removido do fluxo pra devolver esse espaço aos
+     botões. */
+  .linha-titulo { flex-wrap: nowrap; gap: 6px; margin-bottom: 10px; }
+  .linha-titulo .espaco { display: none; }
+  .linha-titulo .calendario-picker { flex: 1 1 auto; min-width: 0; }
+  .linha-titulo .calendario-picker summary.titulo-dia {
+    display: block; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* Botões de navegação de dia: toque ≥44px (item 4 da etapa) sem crescer
+     na largura horizontal — `flex: none` impede que estiquem além disso e
+     roubem espaço do título truncado. */
+  .nav-dia { flex: none; min-width: 44px; min-height: 44px; padding: 0; }
+  /* "Lista" e "+ Agendar sessão" encolhem pra ícone (o texto continua no
+     HTML — funcionalidade e acessibilidade preservadas via `aria-label` no
+     link — só a exibição visual troca de texto pra ícone; ver `.icone-btn`
+     acima). Uma etapa futura (FAB) tira "+ Agendar" do cabeçalho por
+     completo; por ora só precisa caber na linha. */
+  .linha-titulo .btn-lista, .linha-titulo .btn-agendar { flex: none; padding: 0 10px; }
+  .linha-titulo .btn-lista .texto-btn, .linha-titulo .btn-agendar .texto-btn { display: none; }
+  .linha-titulo .btn-lista .icone-btn, .linha-titulo .btn-agendar .icone-btn { display: inline; font-size: 16px; }
+
+  /* ---- abas Dia/Mês/Ano mais compactas (menos altura, mesmo texto) ---- */
+  .abas { margin-bottom: 10px; }
+  .abas a { padding: 6px 0; font-size: 12px; }
+
+  /* ---- faixa de dias também sticky, empilhada entre a topbar (58px no
+     mobile) e `.grade-cabecas` (que já era sticky desde a Etapa 1). Assim
+     dá pra trocar de dia sem voltar ao topo da página. Decisão: só no
+     mobile — no desktop não há a mesma pressão de espaço vertical, e
+     empilhar os 3 (topbar + faixa-dias + cabeçalhos) lá deixaria uma faixa
+     fixa grande demais sobre o conteúdo; no desktop `.faixa-dias` continua
+     estática, como sempre foi.
+     Altura de `.faixa-dias a` é fixada (em vez de deixar naturalmente
+     variável conforme o dia tem ou não `.badge-dia`) justamente pra este
+     cálculo de empilhamento ser exato: 84px (border-box, `* {box-sizing:
+     border-box}` no topo do arquivo) cobre com folga o conteúdo mais alto —
+     dia+número+mês+selo+barra, com `line-height` comprimido pra 1.2, mais
+     o `gap: 2px` entre eles e a margem própria do selo/barra, soma ~80px —
+     mesmo nos dias sem selo, que só ficam com uma folga em branco embaixo. */
+  .faixa-dias {
+    position: sticky; top: 58px; z-index: 18;
+    background: var(--fundo);
+  }
+  .faixa-dias a { height: 84px; padding: 5px 0; line-height: 1.2; }
+  /* 58px (topbar) + 86px (84px da linha + 2px de `padding-bottom` de
+     `.faixa-dias`) = 144px — ponto onde `.grade-cabecas` deve grudar agora
+     que a faixa de dias também é sticky (antes era só 58px, encostada na
+     topbar). */
+  .grade-cabecas { top: 144px; }
+
+  /* ---- alvos de toque ≥44px (item 4 da etapa) ---- */
+  .chip { min-height: 44px; }
+  .assistente-fechar {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 44px; min-height: 44px;
+  }
 }

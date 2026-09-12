@@ -53,17 +53,34 @@
     }
 
     // Posição absoluta na página = topo da pista + posição do alvo dentro
-    // dela, descontando o `.topbar` fixo e a linha de cabeçalhos sticky
-    // (`.grade-cabecas`, ambos ficam por cima do conteúdo depois de rolar)
-    // mais uma margem extra pra não colar em nenhum dos dois.
+    // dela, descontando o `.topbar` fixo, a faixa de dias e a linha de
+    // cabeçalhos sticky (`.faixa-dias`, `.grade-cabecas` — todos ficam por
+    // cima do conteúdo depois de rolar) mais uma margem extra pra não colar
+    // em nenhum dos três.
+    // `.faixa-dias` só é sticky no mobile (`@media (max-width: 599px)` em
+    // app.css) — no desktop ela rola normalmente com o resto da página, por
+    // isso só desconta a altura dela quando o CSS realmente a tornou
+    // sticky (checar a posição computada em vez de reimplementar aqui o
+    // breakpoint que já existe no CSS).
     const topbar = document.querySelector(".topbar");
+    const faixaDias = document.querySelector(".faixa-dias");
     const gradeCabecas = document.querySelector(".grade-cabecas");
     const alturaTopbar = topbar ? topbar.getBoundingClientRect().height : 0;
+    const alturaFaixaDias =
+      faixaDias && window.getComputedStyle(faixaDias).position === "sticky"
+        ? faixaDias.getBoundingClientRect().height
+        : 0;
     const alturaCabecas = gradeCabecas ? gradeCabecas.getBoundingClientRect().height : 0;
     const margem = 16;
 
     const destino =
-      pista.getBoundingClientRect().top + window.pageYOffset + alvoPx - alturaTopbar - alturaCabecas - margem;
+      pista.getBoundingClientRect().top +
+      window.pageYOffset +
+      alvoPx -
+      alturaTopbar -
+      alturaFaixaDias -
+      alturaCabecas -
+      margem;
 
     // Duplo rAF (roda só depois que o navegador terminou de pintar o
     // primeiro frame): os links da página navegam com "#dia-atual" na URL

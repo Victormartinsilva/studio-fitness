@@ -11,11 +11,17 @@
             <button type="submit">Ir</button>
         </form>
     </details>
-    <a class="btn btn-secundario btn-sm" href="?data={{ dia_anterior|date:'Y-m-d' }}#dia-atual">‹</a>
-    <a class="btn btn-secundario btn-sm" href="?data={{ dia_seguinte|date:'Y-m-d' }}#dia-atual">›</a>
+    <a class="btn btn-secundario btn-sm nav-dia" href="?data={{ dia_anterior|date:'Y-m-d' }}#dia-atual" aria-label="Dia anterior">‹</a>
+    <a class="btn btn-secundario btn-sm nav-dia" href="?data={{ dia_seguinte|date:'Y-m-d' }}#dia-atual" aria-label="Dia seguinte">›</a>
     <span class="espaco"></span>
-    <a class="btn btn-secundario btn-sm" href="{% url 'agenda:minhas_sessoes' %}">Lista</a>
-    {% if pode_agendar %}<a class="btn btn-sm" href="{% url 'agenda:agendar' %}?data={{ data|date:'Y-m-d' }}">+ Agendar sessão</a>{% endif %}
+    <a class="btn btn-secundario btn-sm btn-lista" href="{% url 'agenda:minhas_sessoes' %}" aria-label="Lista">
+        <span class="icone-btn" aria-hidden="true">📋</span><span class="texto-btn">Lista</span>
+    </a>
+    {% if pode_agendar %}
+    <a class="btn btn-sm btn-agendar" href="{% url 'agenda:agendar' %}?data={{ data|date:'Y-m-d' }}" aria-label="Agendar sessão">
+        <span class="icone-btn" aria-hidden="true">＋</span><span class="texto-btn">+ Agendar sessão</span>
+    </a>
+    {% endif %}
 </div>
 
 {% include "agenda/_abas_visao.html" with visao="dia" %}
@@ -88,21 +94,24 @@
     </div>
 </div>
 
-<div class="legenda">
-    {% if mostrar_legenda_propria %}
-    {% if filtro_professor_ativo %}
-    <span class="item-legenda"><i class="sessao propria"></i>Sessão do professor filtrado</span>
-    {% else %}
-    <span class="item-legenda"><i class="sessao propria"></i>Sua sessão</span>
-    {% endif %}
-    <span class="item-legenda"><i class="sessao outra"></i>Sessão de outro professor</span>
-    {% else %}
-    <span class="item-legenda"><i class="sessao"></i>Sessão</span>
-    {% endif %}
-    <span class="item-legenda"><i class="preparo"></i>Preparo / troca do equipamento</span>
-    <span class="item-legenda"><i class="bloqueio"></i>Bloqueio</span>
-    {% if pode_agendar %}<span class="item-legenda"><i class="livre"></i>Horário livre — clique para agendar</span>{% endif %}
-</div>
+<details class="legenda">
+    <summary>Legenda</summary>
+    <div class="legenda-conteudo">
+        {% if mostrar_legenda_propria %}
+        {% if filtro_professor_ativo %}
+        <span class="item-legenda"><i class="sessao propria"></i>Sessão do professor filtrado</span>
+        {% else %}
+        <span class="item-legenda"><i class="sessao propria"></i>Sua sessão</span>
+        {% endif %}
+        <span class="item-legenda"><i class="sessao outra"></i>Sessão de outro professor</span>
+        {% else %}
+        <span class="item-legenda"><i class="sessao"></i>Sessão</span>
+        {% endif %}
+        <span class="item-legenda"><i class="preparo"></i>Preparo / troca do equipamento</span>
+        <span class="item-legenda"><i class="bloqueio"></i>Bloqueio</span>
+        {% if pode_agendar %}<span class="item-legenda"><i class="livre"></i>Horário livre — clique para agendar</span>{% endif %}
+    </div>
+</details>
 
 <script src="{% static 'js/agenda.js' %}" defer></script>
 {% endblock %}

@@ -413,6 +413,49 @@ class GradeClicavelTests(TestCase):
         self.assertContains(response, f'value="{self.equipamento.id}" selected')
 
 
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class GradeChromeCompactoTests(TestCase):
+    """Etapa 2a (compactação do cabeçalho/navegação da grade no mobile): só
+    mudou CSS/HTML de layout, então o que dá pra travar aqui é que nenhum
+    elemento funcional saiu do HTML (o encolhimento pra ícone no mobile é
+    só visual/CSS, o texto continua no DOM — ver `.icone-btn`/`.texto-btn`
+    em app.css)."""
+
+    def setUp(self):
+        usuario = Usuario.objects.create_user("bia2", password="teste12345", papel=Usuario.Papel.PROFESSOR)
+        self.professor = Professor.objects.create(usuario=usuario)
+        self.client.force_login(usuario)
+        self.url = reverse("agenda:grade")
+
+    def test_cabecalho_mantem_lista_e_agendar(self):
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Lista")
+        self.assertContains(response, "Agendar sessão")
+        self.assertContains(response, reverse("agenda:minhas_sessoes"))
+        self.assertContains(response, reverse("agenda:agendar"))
+
+    def test_abas_de_visao_presentes(self):
+        response = self.client.get(self.url)
+
+        self.assertContains(response, reverse("agenda:grade") + "#dia-atual")
+        self.assertContains(response, reverse("agenda:mes"))
+        self.assertContains(response, reverse("agenda:ano"))
+
+    def test_legenda_presente_como_details_recolhivel(self):
+        response = self.client.get(self.url)
+
+        self.assertContains(response, '<details class="legenda">')
+        self.assertContains(response, "<summary>Legenda</summary>")
+        self.assertContains(response, "Preparo / troca do equipamento")
+        self.assertContains(response, "Bloqueio")
+
+
 class VagasLivresAlturaMinimaTests(TestCase):
     """`_vagas_livres` deve garantir uma altura visual mínima (~40px, alvo
     de toque) pro bloco "vaga livre", sem nunca ultrapassar o fim real do
