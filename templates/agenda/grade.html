@@ -7,6 +7,7 @@
     <a class="btn btn-secundario btn-sm" href="?data={{ dia_seguinte|date:'Y-m-d' }}">›</a>
     <p class="sub">{{ total_sessoes }} sessões · ocupação {{ ocupacao }}%</p>
     <span class="espaco"></span>
+    <a class="btn btn-secundario btn-sm" href="{% url 'agenda:minhas_sessoes' %}">Lista</a>
     {% if pode_agendar %}<a class="btn btn-sm" href="{% url 'agenda:agendar' %}?data={{ data|date:'Y-m-d' }}">+ Agendar sessão</a>{% endif %}
 </div>
 

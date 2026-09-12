@@ -55,8 +55,12 @@ def _bloco(classe, inicio, fim, dia, titulo="", subtitulo="", inset_topo=False, 
     altura = max(6, altura)
     return {
         "classe": classe,
-        "top": round(top, 1),
-        "altura": round(altura, 1),
+        # Formatado aqui (ponto decimal fixo) em vez de deixar o template
+        # renderizar o float: com locale pt-br, "{{ valor }}" vira "831,6"
+        # (vírgula), o que quebra o CSS inline "top:831,6px" e faz todo
+        # bloco cair para top:0 (empilhado no topo da grade).
+        "top": "{:.1f}".format(top),
+        "altura": "{:.1f}".format(altura),
         "titulo": titulo,
         "subtitulo": subtitulo,
     }
@@ -91,8 +95,8 @@ def _vagas_livres(ocupados, dia, equipamento_id, agora):
             if momento >= agora:
                 vagas.append(
                     {
-                        "top": round(m * PX_POR_MIN, 1),
-                        "altura": round((fim_slot - m) * PX_POR_MIN, 1),
+                        "top": "{:.1f}".format(m * PX_POR_MIN),
+                        "altura": "{:.1f}".format((fim_slot - m) * PX_POR_MIN),
                         "titulo": "{:02d}:{:02d}".format(hh, mm),
                         "href": "{}?data={}&hora_inicio={:02d}:{:02d}&equipamento={}".format(
                             reverse("agenda:agendar"), dia.isoformat(), hh, mm, equipamento_id
