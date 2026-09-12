@@ -12,10 +12,22 @@
     </details>
     <a class="btn btn-secundario btn-sm" href="?data={{ dia_anterior|date:'Y-m-d' }}#dia-atual">‹</a>
     <a class="btn btn-secundario btn-sm" href="?data={{ dia_seguinte|date:'Y-m-d' }}#dia-atual">›</a>
-    <p class="sub">{{ total_sessoes }} sessões · ocupação {{ ocupacao }}%</p>
     <span class="espaco"></span>
     <a class="btn btn-secundario btn-sm" href="{% url 'agenda:minhas_sessoes' %}">Lista</a>
     {% if pode_agendar %}<a class="btn btn-sm" href="{% url 'agenda:agendar' %}?data={{ data|date:'Y-m-d' }}">+ Agendar sessão</a>{% endif %}
+</div>
+
+<div class="kpis kpis-dia" style="margin-bottom:12px">
+    <div class="kpi"><span class="valor">{{ total_sessoes }}</span><span class="nome">Sessões</span></div>
+    <div class="kpi"><span class="valor">{{ alunos_distintos }}</span><span class="nome">Alunos</span></div>
+    <div class="kpi"><span class="valor">{{ ocupacao }}%</span><span class="nome">Ocupação</span></div>
+    {% if proxima_vaga %}
+    <a class="kpi" href="{{ proxima_vaga.href }}" title="Agendar nesta vaga">
+        <span class="valor valor-sm">{{ proxima_vaga.texto }}</span><span class="nome">Próxima vaga</span>
+    </a>
+    {% else %}
+    <div class="kpi"><span class="valor valor-sm">—</span><span class="nome">Próxima vaga</span></div>
+    {% endif %}
 </div>
 
 <div class="faixa-dias" style="margin-bottom:12px">
@@ -24,9 +36,21 @@
         <span class="dia">{{ dia.data|date:"D" }}</span>
         <span class="num">{{ dia.data|date:"d" }}</span>
         <span class="mes">{{ dia.data|date:"M" }}</span>
+        {% if dia.qtd > 0 %}<span class="badge-dia">{{ dia.qtd }}</span>{% endif %}
+        <span class="barra-dia nivel-{{ dia.nivel }}"></span>
     </a>
     {% endfor %}
 </div>
+
+{% if linha_professores %}
+<div class="chips linha-professores" style="margin-bottom:12px">
+    {% for item in linha_professores %}
+    <a class="chip{% if item.destaque %} ativo{% endif %}{% if item.livre %} livre{% endif %}" href="{{ item.href }}">
+        {{ item.professor }} · {{ item.qtd }}
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
 
 
 <div class="grade">
@@ -41,12 +65,24 @@
             <div class="cabeca">
                 {{ coluna.equipamento.nome }}
                 {% if coluna.equipamento.status == 'ativo' %}
-                <span class="tag ok">livre</span>
+                {% if coluna.resumo %}
+                <span class="tag ok">{{ coluna.resumo.qtd }} sessões · {{ coluna.resumo.ocupacao_pct }}%</span>
+                {% else %}
+                <span class="tag ok">0 sessões · 0%</span>
+                {% endif %}
+                {% if dia_eh_hoje %}
+                {% if coluna.ocupado_agora %}
+                <span class="tag aviso">ocupado agora</span>
+                {% else %}
+                <span class="tag ok">livre agora</span>
+                {% endif %}
+                {% endif %}
                 {% else %}
                 <span class="tag aviso">{{ coluna.equipamento.get_status_display|lower }}</span>
                 {% endif %}
             </div>
             <div class="pista" style="height:{{ altura_pista }}px;background:repeating-linear-gradient(to bottom, #fff 0 {{ altura_hora_menos1 }}px, #f3eef6 {{ altura_hora_menos1 }}px {{ altura_hora }}px)">
+                {% if mostrar_linha_agora %}<div class="linha-agora" style="top:{{ linha_agora_top }}px"></div>{% endif %}
                 {% for v in coluna.vagas %}
                 <a class="bloco livre" style="top:{{ v.top }}px;height:{{ v.altura }}px" href="{{ v.href }}" title="Agendar às {{ v.titulo }}">+ {{ v.titulo }}</a>
                 {% endfor %}
@@ -66,7 +102,11 @@
 
 <div class="legenda">
     {% if mostrar_legenda_propria %}
+    {% if filtro_professor_ativo %}
+    <span class="item-legenda"><i class="sessao propria"></i>Sessão do professor filtrado</span>
+    {% else %}
     <span class="item-legenda"><i class="sessao propria"></i>Sua sessão</span>
+    {% endif %}
     <span class="item-legenda"><i class="sessao outra"></i>Sessão de outro professor</span>
     {% else %}
     <span class="item-legenda"><i class="sessao"></i>Sessão</span>

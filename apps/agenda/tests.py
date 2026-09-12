@@ -438,3 +438,129 @@ class SugerirHorariosTests(TestCase):
         agora = timezone.now()
         for sugestao in sugestoes:
             self.assertGreaterEqual(sugestao["inicio"], agora)
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class GradeInteligenteTests(TestCase):
+    """Etapa 2: faixa de dias com contagem, ocupação correta (descontando
+    manutenção) e filtro por professor na grade."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45, preparo_min=10, troca_min=10)
+        usuario_gestor = Usuario.objects.create_user(
+            "gestor", password="teste12345", papel=Usuario.Papel.GESTOR
+        )
+        self.gestor = usuario_gestor
+        usuario_a = Usuario.objects.create_user("bia", password="teste12345", papel=Usuario.Papel.PROFESSOR)
+        usuario_b = Usuario.objects.create_user("leo", password="teste12345", papel=Usuario.Papel.PROFESSOR)
+        self.professor_a = Professor.objects.create(usuario=usuario_a)
+        self.professor_b = Professor.objects.create(usuario=usuario_b)
+        self.professor_a.tipos_habilitados.add(self.tipo)
+        self.professor_b.tipos_habilitados.add(self.tipo)
+        self.aluno = Aluno.objects.create(nome="Mariana")
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+        self.dia = timezone.localdate() + timedelta(days=1)
+
+    def _agenda(self, professor, hora, equipamento=None):
+        inicio = timezone.make_aware(
+            datetime.combine(self.dia, datetime.min.time()) + timedelta(hours=hora)
+        )
+        fim = inicio + timedelta(minutes=self.tipo.duracao_min)
+        return servicos.agendar(
+            professor=professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=equipamento or self.equipamento, inicio=inicio, fim=fim,
+        )
+
+    def test_faixa_de_dias_mostra_contagem_do_dia(self):
+        self._agenda(self.professor_a, hora=10)
+        self._agenda(self.professor_b, hora=12, equipamento=Equipamento.objects.create(nome="Equip. 02"))
+        self.client.force_login(self.gestor)
+
+        url = reverse("agenda:grade") + f"?data={self.dia.isoformat()}"
+        response = self.client.get(url)
+
+        self.assertContains(response, '<span class="badge-dia">2</span>')
+
+    def test_equipamento_em_manutencao_nao_conta_na_ocupacao_da_grade(self):
+        self._agenda(self.professor_a, hora=10)
+        equipamento_manutencao = Equipamento.objects.create(
+            nome="Equip. 02", status=Equipamento.Status.MANUTENCAO
+        )
+        self.client.force_login(self.gestor)
+
+        url = reverse("agenda:grade") + f"?data={self.dia.isoformat()}"
+        response = self.client.get(url)
+
+        resumo_direto = motor.resumo_do_dia(self.dia)
+        self.assertNotIn("Equip. 02", resumo_direto["por_equipamento"])
+        self.assertContains(response, f'{resumo_direto["ocupacao_pct"]}%')
+        # a coluna do equipamento em manutenção continua aparecendo...
+        self.assertContains(response, "Equip. 02")
+        # ...mas com a etiqueta de status, não contando sessões/ocupação.
+        self.assertNotContains(response, "0 sessões · 0%")
+
+    def test_filtro_por_professor_destaca_sessoes_do_professor_e_marca_as_demais_como_outra(self):
+        self._agenda(self.professor_a, hora=10)
+        self._agenda(self.professor_b, hora=14, equipamento=Equipamento.objects.create(nome="Equip. 02"))
+        self.client.force_login(self.gestor)
+
+        url = reverse("agenda:grade") + f"?data={self.dia.isoformat()}&professor={self.professor_a.id}"
+        response = self.client.get(url)
+
+        self.assertContains(response, "sessao propria")
+        self.assertContains(response, "sessao outra")
+
+    def test_sem_filtro_por_professor_gestor_nao_ve_classe_outra(self):
+        self._agenda(self.professor_a, hora=10)
+        self._agenda(self.professor_b, hora=14, equipamento=Equipamento.objects.create(nome="Equip. 02"))
+        self.client.force_login(self.gestor)
+
+        url = reverse("agenda:grade") + f"?data={self.dia.isoformat()}"
+        response = self.client.get(url)
+
+        self.assertNotContains(response, "sessao outra")
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class PainelEGradeOcupacaoTests(TestCase):
+    """Bug confirmado: painel e grade calculavam ocupação de formas
+    diferentes. Agora ambos usam `motor.resumo_do_dia` e devem bater."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45, preparo_min=10, troca_min=10)
+        usuario_gestor = Usuario.objects.create_user(
+            "gestor", password="teste12345", papel=Usuario.Papel.GESTOR
+        )
+        self.gestor = usuario_gestor
+        usuario = Usuario.objects.create_user("bia", password="teste12345", papel=Usuario.Papel.PROFESSOR)
+        self.professor = Professor.objects.create(usuario=usuario)
+        self.professor.tipos_habilitados.add(self.tipo)
+        self.aluno = Aluno.objects.create(nome="Mariana")
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+
+    def test_painel_e_grade_mostram_a_mesma_ocupacao_hoje(self):
+        hoje = timezone.localdate()
+        inicio = timezone.make_aware(datetime.combine(hoje, datetime.min.time()) + timedelta(hours=10))
+        fim = inicio + timedelta(minutes=self.tipo.duracao_min)
+        servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento, inicio=inicio, fim=fim,
+        )
+        self.client.force_login(self.gestor)
+
+        resposta_painel = self.client.get(reverse("painel:home"))
+        resposta_grade = self.client.get(reverse("agenda:grade") + f"?data={hoje.isoformat()}")
+
+        pct_esperado = motor.resumo_do_dia(hoje)["ocupacao_pct"]
+        self.assertContains(resposta_painel, f"{pct_esperado}%")
+        self.assertContains(resposta_grade, f"{pct_esperado}%")

@@ -300,6 +300,42 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 .legenda i.bloqueio { background: var(--hachura-cinza); border: 1px dashed #c3bac9; }
 .legenda i.livre { background: var(--superficie); border: 1px dashed #b58ac4; }
 
+/* ---------- agenda: mini-KPIs do dia (cabeçalho da grade) ---------- */
+.kpis-dia { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.kpis-dia .kpi { text-decoration: none; }
+.kpi .valor.valor-sm { font-size: 13px; line-height: 1.3; }
+
+/* ---------- agenda: badge/barra de movimento na faixa de dias ---------- */
+.faixa-dias a .badge-dia {
+  font-size: 9px; font-weight: 700; color: var(--roxo); background: var(--roxo-claro);
+  border-radius: 999px; padding: 1px 5px; margin-top: 2px;
+}
+.faixa-dias a.hoje .badge-dia { background: rgba(255,255,255,.25); color: #fff; }
+.faixa-dias a .barra-dia { display: block; width: 18px; height: 3px; border-radius: 2px; margin-top: 3px; background: transparent; }
+.faixa-dias a .barra-dia.nivel-baixo { background: var(--verde); }
+.faixa-dias a .barra-dia.nivel-medio { background: var(--ambar); }
+.faixa-dias a .barra-dia.nivel-alto { background: var(--roxo); }
+.faixa-dias a.hoje .barra-dia.nivel-baixo,
+.faixa-dias a.hoje .barra-dia.nivel-medio,
+.faixa-dias a.hoje .barra-dia.nivel-alto { background: #fff; }
+
+/* ---------- agenda: linha de professores do dia ---------- */
+.linha-professores { margin-bottom: 12px; }
+.chip.livre::after {
+  content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 6px;
+  border-radius: 50%; background: var(--verde);
+}
+
+/* ---------- agenda: linha do "agora" na grade ---------- */
+.grade .linha-agora {
+  position: absolute; left: 0; right: 0; height: 2px; background: var(--roxo);
+  z-index: 5; pointer-events: none;
+}
+.grade .linha-agora::before {
+  content: ""; position: absolute; left: -3px; top: -3px; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--roxo);
+}
+
 /* ---------- botão "+" retrátil (abre o formulário de novo/editar) ---------- */
 .botao-mais {
   width: 44px; height: 44px; flex: none; border-radius: 50%;

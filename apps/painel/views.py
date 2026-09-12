@@ -5,6 +5,7 @@ from django.shortcuts import render
 from django.utils import timezone
 
 from apps.cadastros.models import Aluno, Equipamento
+from apps.agenda import motor
 from apps.agenda.models import Sessao
 from apps.modulos.catalogo import MODULOS
 from apps.modulos.models import VisibilidadeModulo
@@ -32,13 +33,15 @@ def home(request):
 
     kpis = []
     if usuario.is_superuser or usuario.is_gestor:
-        do_dia = sessoes.filter(inicio__date=hoje)
-        minutos = sum((s.reserva_fim - s.reserva_inicio).total_seconds() / 60 for s in do_dia if s.equipamento_id)
+        resumo = motor.resumo_do_dia(hoje)
+        # `total_sessoes` do resumo inclui canceladas (documentado em
+        # `motor.resumo_do_dia`) — descontamos para manter o mesmo
+        # significado que "Sessões hoje" sempre teve aqui (só as ativas).
+        sessoes_ativas_hoje = resumo["total_sessoes"] - resumo["por_status"].get(Sessao.Status.CANCELADA, 0)
         equipamentos = Equipamento.objects.filter(status=Equipamento.Status.ATIVO).count()
-        capacidade = max(1, equipamentos) * 14 * 60  # 07:00–21:00
         kpis = [
-            {"valor": "{}%".format(round(minutos / capacidade * 100)), "nome": "Ocupação hoje"},
-            {"valor": do_dia.count(), "nome": "Sessões hoje"},
+            {"valor": "{}%".format(resumo["ocupacao_pct"]), "nome": "Ocupação hoje"},
+            {"valor": sessoes_ativas_hoje, "nome": "Sessões hoje"},
             {"valor": Aluno.objects.filter(ativo=True).count(), "nome": "Alunos ativos"},
             {"valor": equipamentos, "nome": "Equipamentos ativos"},
         ]
