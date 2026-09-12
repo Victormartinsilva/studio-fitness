@@ -23,6 +23,9 @@ SLOT_MIN = 30            # granularidade dos horários livres clicáveis
 SLOT_MIN_MINIMO = 15     # não mostra sobra de vaga menor que isso no fim de um intervalo
 
 
+GAP_PX = 3               # espaço visual entre reservas distintas (evita blocos "colados")
+
+
 def _minutos(momento, dia):
     """Minuto (clipado à janela do dia) de um datetime dentro da pista do dia."""
     local = timezone.localtime(momento)
@@ -41,9 +44,15 @@ def _offset(momento, dia):
     return _minutos(momento, dia) * PX_POR_MIN
 
 
-def _bloco(classe, inicio, fim, dia, titulo="", subtitulo=""):
+def _bloco(classe, inicio, fim, dia, titulo="", subtitulo="", inset_topo=False, inset_base=False):
     top = _offset(inicio, dia)
-    altura = max(6, _offset(fim, dia) - top)
+    altura = _offset(fim, dia) - top
+    if inset_topo:
+        top += GAP_PX
+        altura -= GAP_PX
+    if inset_base:
+        altura -= GAP_PX
+    altura = max(6, altura)
     return {
         "classe": classe,
         "top": round(top, 1),
@@ -115,6 +124,9 @@ def grade(request):
     equipamentos = Equipamento.objects.exclude(status=Equipamento.Status.INATIVO)
     pode_agendar = request.user.is_superuser or request.user.is_gestor or request.user.is_professor
     agora = timezone.now()
+    professor_logado_id = (
+        request.user.professor.id if request.user.is_professor and hasattr(request.user, "professor") else None
+    )
 
     colunas = []
     for equipamento in equipamentos:
@@ -124,13 +136,20 @@ def grade(request):
             if sessao.equipamento_id != equipamento.id:
                 continue
             ocupados.append((_minutos(sessao.reserva_inicio, dia), _minutos(sessao.reserva_fim, dia)))
-            if sessao.reserva_inicio < sessao.inicio:
-                blocos.append(_bloco("preparo", sessao.reserva_inicio, sessao.inicio, dia))
-            if sessao.reserva_fim > sessao.fim:
-                blocos.append(_bloco("troca", sessao.fim, sessao.reserva_fim, dia))
+            eh_propria = professor_logado_id is not None and sessao.professor_id == professor_logado_id
+            if professor_logado_id is not None:
+                classe_sessao = "sessao propria" if eh_propria else "sessao outra"
+            else:
+                classe_sessao = "sessao"
+            tem_preparo = sessao.reserva_inicio < sessao.inicio
+            tem_troca = sessao.reserva_fim > sessao.fim
+            if tem_preparo:
+                blocos.append(_bloco("preparo", sessao.reserva_inicio, sessao.inicio, dia, inset_topo=True))
+            if tem_troca:
+                blocos.append(_bloco("troca", sessao.fim, sessao.reserva_fim, dia, inset_base=True))
             blocos.append(
                 _bloco(
-                    "sessao",
+                    classe_sessao,
                     sessao.inicio,
                     sessao.fim,
                     dia,
@@ -138,6 +157,8 @@ def grade(request):
                         timezone.localtime(sessao.inicio), timezone.localtime(sessao.fim), sessao.aluno
                     ),
                     subtitulo="{} · {}".format(sessao.professor, sessao.tipo),
+                    inset_topo=not tem_preparo,
+                    inset_base=not tem_troca,
                 )
             )
         for bloqueio in bloqueios:
@@ -154,6 +175,8 @@ def grade(request):
                     subtitulo="{:%H:%M} – {:%H:%M}".format(
                         timezone.localtime(bloqueio.inicio), timezone.localtime(bloqueio.fim)
                     ),
+                    inset_topo=True,
+                    inset_base=True,
                 )
             )
         vagas = []
@@ -190,5 +213,6 @@ def grade(request):
             "total_sessoes": len([s for s in sessoes]),
             "ocupacao": round(minutos_reservados / capacidade * 100),
             "pode_agendar": pode_agendar,
+            "mostrar_legenda_propria": professor_logado_id is not None,
         },
     )

@@ -32,8 +32,7 @@
             <a href="{% url 'cadastros:alunos' %}" class="{% if aba == 'alunos' %}ativo{% endif %}">Alunos</a>
             <a href="{% url 'cadastros:equipamentos' %}" class="{% if aba == 'equipamentos' %}ativo{% endif %}">Equipamentos</a>
             <a href="{% url 'cadastros:tipos_sessao' %}" class="{% if aba == 'tipos' %}ativo{% endif %}">Tipos de sessão</a>
-            <a href="{% url 'planos:planos' %}" class="{% if aba == 'planos' %}ativo{% endif %}">Planos</a>
-            <a href="{% url 'planos:contratacoes' %}" class="{% if aba == 'contratacoes' %}ativo{% endif %}">Contratações</a>
+            <a href="{% url 'planos:planos' %}" class="{% if aba == 'planos' or aba == 'contratacoes' %}ativo{% endif %}">Planos</a>
             {% endif %}
         </nav>
         {% endif %}

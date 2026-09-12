@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Contratações — Studio Fitness{% endblock %}
+{% block title %}Planos assinados — Studio Fitness{% endblock %}
 {% block content %}
 <div class="linha-titulo">
-    <h1>Contratações</h1>
+    <h1>Planos assinados</h1>
     <span class="espaco"></span>
-    <a class="botao-mais" href="{% url 'planos:contratacoes' %}?novo=1" title="Nova contratação">+</a>
+    <a class="botao-mais" href="{% url 'planos:contratacoes' %}?novo=1" title="Novo plano assinado">+</a>
 </div>
 
 <div class="abas" style="max-width:360px;margin-bottom:16px">
     <a href="{% url 'planos:planos' %}">Planos</a>
-    <a href="{% url 'planos:contratacoes' %}" class="ativo">Contratações</a>
+    <a href="{% url 'planos:contratacoes' %}" class="ativo">Planos assinados</a>
 </div>
 
 <div class="lista">
@@ -23,16 +23,16 @@
         <div class="acoes">
             <span class="tag {% if contratacao.status == 'ativa' %}ok{% elif contratacao.status == 'suspensa' %}aviso{% else %}off{% endif %}">{{ contratacao.get_status_display }}</span>
             <a class="btn btn-secundario btn-sm" href="{% url 'planos:contratacoes_editar' contratacao.pk %}">Editar</a>
-            <form method="post" action="{% url 'planos:contratacoes_editar' contratacao.pk %}" onsubmit="return confirm('Excluir esta contratação?');">
+            <form method="post" action="{% url 'planos:contratacoes_editar' contratacao.pk %}" onsubmit="return confirm('Excluir este plano assinado?');">
                 {% csrf_token %}
                 <button type="submit" name="_excluir" value="1" class="btn-perigo">Excluir</button>
             </form>
         </div>
     </div>
     {% empty %}
-    <div class="card vazio">Nenhuma contratação cadastrada.</div>
+    <div class="card vazio">Nenhum plano assinado cadastrado.</div>
     {% endfor %}
 </div>
 
-{% include "_partials/modal_formulario.html" with titulo_novo="Nova contratação" titulo_editar="Editar contratação" cancel_url="planos:contratacoes" %}
+{% include "_partials/modal_formulario.html" with titulo_novo="Novo plano assinado" titulo_editar="Editar plano assinado" cancel_url="planos:contratacoes" %}
 {% endblock %}

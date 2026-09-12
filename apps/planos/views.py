@@ -37,14 +37,14 @@ def contratacoes(request, pk=None):
 
     if request.method == "POST" and request.POST.get("_excluir") and instancia:
         instancia.delete()
-        messages.success(request, "Contratação excluída.")
+        messages.success(request, "Plano assinado excluído.")
         return redirect("planos:contratacoes")
 
     if request.method == "POST":
         form = ContratacaoForm(request.POST, instance=instancia)
         if form.is_valid():
             form.save()
-            messages.success(request, "Contratação salva com sucesso.")
+            messages.success(request, "Plano assinado salvo com sucesso.")
             return redirect("planos:contratacoes")
     else:
         form = ContratacaoForm(instance=instancia)

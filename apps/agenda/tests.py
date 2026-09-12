@@ -8,7 +8,7 @@ from django.utils import timezone
 from apps.cadastros.models import Aluno, Equipamento, Professor, TipoSessao
 from apps.contas.models import Usuario
 
-from . import servicos
+from . import motor, servicos
 from .models import DisponibilidadeProfessor
 
 
@@ -166,3 +166,65 @@ class GradeClicavelTests(TestCase):
 
         self.assertContains(response, 'value="09:30"')
         self.assertContains(response, f'value="{self.equipamento.id}" selected')
+
+
+class SugerirHorariosTests(TestCase):
+    """Agenda inteligente: quando o horário/equipamento pedido não serve,
+    o motor deve sugerir alternativas livres para o mesmo professor/tipo."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45, preparo_min=10, troca_min=10)
+        usuario = Usuario.objects.create_user("bia", "senha123", papel=Usuario.Papel.PROFESSOR)
+        self.professor = Professor.objects.create(usuario=usuario)
+        self.professor.tipos_habilitados.add(self.tipo)
+        self.aluno = Aluno.objects.create(nome="Mariana")
+        self.equipamento_1 = Equipamento.objects.create(nome="Equip. 01")
+        self.equipamento_2 = Equipamento.objects.create(nome="Equip. 02")
+        self.dia = timezone.localdate() + timedelta(days=1)
+
+    def test_sem_habilitacao_nao_ha_sugestoes(self):
+        self.professor.tipos_habilitados.remove(self.tipo)
+
+        sugestoes = motor.sugerir_horarios(
+            professor=self.professor, tipo_sessao=self.tipo, dia=self.dia,
+        )
+
+        self.assertEqual(sugestoes, [])
+
+    def test_sugere_outro_equipamento_livre_quando_o_preferido_esta_ocupado(self):
+        inicio = timezone.make_aware(datetime.combine(self.dia, datetime.min.time()) + timedelta(hours=10))
+        fim = inicio + timedelta(minutes=self.tipo.duracao_min)
+        servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento_1, inicio=inicio, fim=fim,
+        )
+
+        sugestoes = motor.sugerir_horarios(
+            professor=self.professor, tipo_sessao=self.tipo, dia=self.dia,
+            equipamento_preferido=self.equipamento_1, hora_desejada=inicio.time(),
+        )
+
+        equipamentos_sugeridos = {s["equipamento"].id for s in sugestoes}
+        # o professor está ocupado às 10h (mesmo em outro equipamento), então
+        # nenhuma sugestão pode cair exatamente nesse horário
+        for sugestao in sugestoes:
+            self.assertFalse(sugestao["inicio"] <= inicio < sugestao["fim"])
+        self.assertIn(self.equipamento_2.id, equipamentos_sugeridos)
+
+    def test_sugestoes_respeitam_limite(self):
+        sugestoes = motor.sugerir_horarios(
+            professor=self.professor, tipo_sessao=self.tipo, dia=self.dia, limite=1,
+        )
+
+        self.assertEqual(len(sugestoes), 1)
+
+    def test_sugestoes_nao_incluem_horario_passado(self):
+        hoje = timezone.localdate()
+
+        sugestoes = motor.sugerir_horarios(
+            professor=self.professor, tipo_sessao=self.tipo, dia=hoje,
+        )
+
+        agora = timezone.now()
+        for sugestao in sugestoes:
+            self.assertGreaterEqual(sugestao["inicio"], agora)

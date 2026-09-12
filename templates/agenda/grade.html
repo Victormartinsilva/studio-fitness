@@ -55,7 +55,12 @@
 </div>
 
 <div class="legenda">
+    {% if mostrar_legenda_propria %}
+    <span class="item-legenda"><i class="sessao propria"></i>Sua sessão</span>
+    <span class="item-legenda"><i class="sessao outra"></i>Sessão de outro professor</span>
+    {% else %}
     <span class="item-legenda"><i class="sessao"></i>Sessão</span>
+    {% endif %}
     <span class="item-legenda"><i class="preparo"></i>Preparo / troca do equipamento</span>
     <span class="item-legenda"><i class="bloqueio"></i>Bloqueio</span>
     {% if pode_agendar %}<span class="item-legenda"><i class="livre"></i>Horário livre — clique para agendar</span>{% endif %}

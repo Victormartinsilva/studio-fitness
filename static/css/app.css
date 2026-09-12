@@ -144,6 +144,18 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 .alerta.aviso { border-left-color: var(--ambar); }
 .alerta.critico { border-left-color: var(--vermelho); }
 
+/* ---------- sugestões da agenda inteligente ---------- */
+.sugestoes-horario { display: flex; flex-wrap: wrap; gap: 8px; }
+.sugestao-item {
+  display: flex; flex-direction: column; gap: 2px; min-width: 120px;
+  background: var(--roxo-claro); border: 1px solid #ddc8e6; border-radius: var(--r-md);
+  padding: 8px 12px; text-decoration: none; color: var(--roxo);
+  transition: background .12s ease, border-color .12s ease;
+}
+.sugestao-item:hover { background: #e4d3ec; border-color: var(--roxo); }
+.sugestao-item .quando { font-family: "Outfit", sans-serif; font-weight: 700; font-size: 13px; }
+.sugestao-item .onde { font-size: 11px; color: var(--ink-3); }
+
 /* ---------- chips e etiquetas ---------- */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
@@ -237,9 +249,13 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
   position: absolute; left: 5px; right: 5px; overflow: hidden;
   border-radius: 6px; padding: 5px 8px;
 }
-.grade .bloco.sessao { background: var(--roxo); color: #fff; }
+.grade .bloco.sessao, .grade .bloco.sessao.propria {
+  background: var(--roxo); color: #fff; border: 1px solid #4d1c60;
+}
 .grade .bloco.sessao .quem { font-size: 11px; font-weight: 600; line-height: 1.2; }
 .grade .bloco.sessao .quem2 { font-size: 10px; line-height: 1.3; color: #e0cfe8; }
+.grade .bloco.sessao.outra { background: #cdb9d6; color: #3d1c48; border-color: #b199bd; }
+.grade .bloco.sessao.outra .quem2 { color: #5c3f66; }
 .grade .bloco.preparo { background: var(--hachura); border-radius: 4px 4px 0 0; padding: 0; }
 .grade .bloco.troca { background: var(--hachura); border-radius: 0 0 4px 4px; padding: 0; }
 .grade .bloco.bloqueio {
@@ -258,6 +274,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 .legenda span.item-legenda { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-3); }
 .legenda i { width: 12px; height: 12px; border-radius: 3px; display: block; }
 .legenda i.sessao { background: var(--roxo); }
+.legenda i.sessao.outra { background: #cdb9d6; }
 .legenda i.preparo { background: var(--hachura); }
 .legenda i.bloqueio { background: var(--hachura-cinza); border: 1px dashed #c3bac9; }
 .legenda i.livre { background: var(--superficie); border: 1px dashed #b58ac4; }

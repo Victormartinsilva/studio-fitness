@@ -30,4 +30,19 @@
         </div>
     </form>
 </div>
+
+{% if sugestoes %}
+<div class="card" style="max-width:560px;margin-top:16px">
+    <h2>✨ Agenda inteligente — horários livres para esse professor/tipo</h2>
+    <p class="sub" style="margin:0 0 12px">Clique numa opção para preencher o formulário automaticamente.</p>
+    <div class="sugestoes-horario">
+        {% for s in sugestoes %}
+        <a class="sugestao-item" href="{{ s.href }}">
+            <span class="quando">{{ s.inicio|date:"d/m" }} · {{ s.inicio|date:"H:i" }}–{{ s.fim|date:"H:i" }}</span>
+            <span class="onde">{{ s.equipamento.nome }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
 {% endblock %}

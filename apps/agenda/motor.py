@@ -5,7 +5,11 @@ tipo de sessão, e verifica se o horário pedido é possível — professor
 habilitado ao tipo de sessão, dentro da disponibilidade cadastrada,
 sem conflito de horário, e equipamento ativo e livre.
 """
-from datetime import timedelta
+from datetime import datetime, time, timedelta
+
+from django.utils import timezone
+
+from apps.cadastros.models import Equipamento
 
 from .models import Sessao
 
@@ -115,3 +119,109 @@ def verificar_disponibilidade(professor, equipamento, inicio, fim, tipo_sessao, 
         motivo_indisponibilidade(professor, equipamento, inicio, fim, tipo_sessao, excluir_sessao_id)
         is None
     )
+
+
+ABERTURA_PADRAO = time(7, 0)
+FECHAMENTO_PADRAO = time(21, 0)
+PASSO_SUGESTAO_MIN = 30
+LIMITE_SUGESTOES = 6
+
+
+def sugerir_horarios(
+    *,
+    professor,
+    tipo_sessao,
+    dia,
+    equipamento_preferido=None,
+    hora_desejada=None,
+    abertura=ABERTURA_PADRAO,
+    fechamento=FECHAMENTO_PADRAO,
+    passo_min=PASSO_SUGESTAO_MIN,
+    limite=LIMITE_SUGESTOES,
+):
+    """Agenda inteligente: varre o expediente do dia e devolve até `limite`
+    combinações (equipamento, início, fim) livres para o professor e tipo de
+    sessão pedidos — no máximo uma por equipamento, priorizando o equipamento
+    preferido e o horário mais próximo do desejado. Devolve lista vazia se o
+    professor não estiver habilitado para o tipo de sessão.
+
+    Para não repetir consultas ao banco a cada combinação de horário ×
+    equipamento, as sessões/disponibilidades do professor e as
+    sessões/bloqueios de cada equipamento são carregados uma única vez e as
+    sobreposições são checadas em memória."""
+    if not professor_habilitado(professor, tipo_sessao):
+        return []
+
+    duracao = timedelta(minutes=tipo_sessao.duracao_min)
+    inicio_expediente = timezone.make_aware(datetime.combine(dia, abertura))
+    fim_expediente = timezone.make_aware(datetime.combine(dia, fechamento))
+    agora = timezone.now()
+    passo = timedelta(minutes=passo_min)
+    alvo = timezone.make_aware(datetime.combine(dia, hora_desejada)) if hora_desejada else max(inicio_expediente, agora)
+
+    momentos = []
+    momento = inicio_expediente
+    while momento + duracao <= fim_expediente:
+        if momento >= agora:
+            momentos.append(momento)
+        momento += passo
+    momentos.sort(key=lambda m: (abs((m - alvo).total_seconds()), m))
+
+    equipamentos = list(Equipamento.objects.filter(status=Equipamento.Status.ATIVO).order_by("nome"))
+    if equipamento_preferido is not None:
+        equipamentos.sort(key=lambda e: e.pk != equipamento_preferido.pk)
+
+    disponibilidades = list(professor.disponibilidades.all())
+    sessoes_professor = list(
+        Sessao.objects.filter(professor=professor).exclude(status=Sessao.Status.CANCELADA)
+    )
+    sessoes_equipamento = {}
+    bloqueios_equipamento = {}
+    for equipamento in equipamentos:
+        sessoes_equipamento[equipamento.pk] = list(
+            Sessao.objects.filter(equipamento=equipamento).exclude(status=Sessao.Status.CANCELADA)
+        )
+        bloqueios_equipamento[equipamento.pk] = list(equipamento.bloqueios.all())
+
+    sugestoes = []
+    usados = set()
+    for momento in momentos:
+        fim = momento + duracao
+        reserva_inicio, reserva_fim, prof_inicio, prof_fim = calcular_janelas(momento, fim, tipo_sessao)
+
+        if disponibilidades and (
+            prof_inicio.date() != prof_fim.date()
+            or not any(
+                d.dia_semana == prof_inicio.weekday()
+                and d.hora_inicio <= prof_inicio.time()
+                and prof_fim.time() <= d.hora_fim
+                for d in disponibilidades
+            )
+        ):
+            continue
+
+        if any(
+            _periodos_se_sobrepoem(prof_inicio, prof_fim, sessao.prof_inicio, sessao.prof_fim)
+            for sessao in sessoes_professor
+        ):
+            continue
+
+        for equipamento in equipamentos:
+            if equipamento.pk in usados:
+                continue
+
+            conflito = any(
+                _periodos_se_sobrepoem(reserva_inicio, reserva_fim, sessao.reserva_inicio, sessao.reserva_fim)
+                for sessao in sessoes_equipamento[equipamento.pk]
+            ) or any(
+                _periodos_se_sobrepoem(reserva_inicio, reserva_fim, bloqueio.inicio, bloqueio.fim)
+                for bloqueio in bloqueios_equipamento[equipamento.pk]
+            )
+            if conflito:
+                continue
+
+            sugestoes.append({"equipamento": equipamento, "inicio": momento, "fim": fim})
+            usados.add(equipamento.pk)
+            if len(sugestoes) >= limite:
+                return sugestoes
+    return sugestoes
