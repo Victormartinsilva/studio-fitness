@@ -6,15 +6,32 @@ registrando o histórico em EventoSessao.
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
+from apps.cadastros.models import Equipamento, Professor
+from apps.planos.models import Contratacao
+
 from . import motor
 from .models import EventoSessao, Sessao
 
 
 @transaction.atomic
 def agendar(*, professor, aluno, tipo, inicio, fim, equipamento=None, contratacao=None, usuario=None):
-    motivo = motor.motivo_indisponibilidade(professor, equipamento, inicio, fim, tipo)
+    # Lock nas linhas de professor/equipamento durante toda a checagem +
+    # gravação, para não deixar duas requisições concorrentes passarem pela
+    # checagem de disponibilidade e só depois colidirem na gravação.
+    professor = Professor.objects.select_for_update().get(pk=professor.pk)
+    if equipamento is not None:
+        equipamento = Equipamento.objects.select_for_update().get(pk=equipamento.pk)
+
+    motivo = motor.motivo_indisponibilidade(professor, equipamento, inicio, fim, tipo, aluno=aluno)
     if motivo:
         raise ValidationError(motivo)
+
+    if contratacao is None:
+        contratacao = (
+            Contratacao.objects.filter(aluno=aluno, status=Contratacao.Status.ATIVA)
+            .order_by("-criado_em")
+            .first()
+        )
 
     reserva_inicio, reserva_fim, prof_inicio, prof_fim = motor.calcular_janelas(inicio, fim, tipo)
 
@@ -42,8 +59,13 @@ def agendar(*, professor, aluno, tipo, inicio, fim, equipamento=None, contrataca
 @transaction.atomic
 def remarcar(*, sessao, inicio, fim, equipamento=None, usuario=None):
     equipamento = equipamento or sessao.equipamento
+
+    professor = Professor.objects.select_for_update().get(pk=sessao.professor_id)
+    if equipamento is not None:
+        equipamento = Equipamento.objects.select_for_update().get(pk=equipamento.pk)
+
     motivo = motor.motivo_indisponibilidade(
-        sessao.professor, equipamento, inicio, fim, sessao.tipo, excluir_sessao_id=sessao.pk
+        professor, equipamento, inicio, fim, sessao.tipo, aluno=sessao.aluno, excluir_sessao_id=sessao.pk
     )
     if motivo:
         raise ValidationError(motivo)

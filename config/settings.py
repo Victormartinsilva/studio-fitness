@@ -40,6 +40,11 @@ if os.environ.get("VERCEL"):
 # Granularidade das sugestões de horário (minutos)
 AGENDA_PASSO_MINUTOS = int(os.environ.get("AGENDA_PASSO_MINUTOS") or "5")
 
+# Horário de abertura/fechamento do estúdio (hora cheia, 0-23) — fonte única
+# em apps/agenda/expediente.py
+AGENDA_ABERTURA_HORA = int(os.environ.get("AGENDA_ABERTURA_HORA") or "7")
+AGENDA_FECHAMENTO_HORA = int(os.environ.get("AGENDA_FECHAMENTO_HORA") or "21")
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

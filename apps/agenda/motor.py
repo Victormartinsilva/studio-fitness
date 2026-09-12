@@ -2,16 +2,23 @@
 Motor de regras da agenda: calcula as janelas de reserva (equipamento) e
 de ocupação do professor a partir da sessão real + preparo/troca do
 tipo de sessão, e verifica se o horário pedido é possível — professor
-habilitado ao tipo de sessão, dentro da disponibilidade cadastrada,
-sem conflito de horário, e equipamento ativo e livre.
+ativo, habilitado ao tipo de sessão, dentro da disponibilidade cadastrada
+e sem conflito de horário; aluno sem conflito de horário; equipamento
+exigido quando o tipo de sessão precisa dele, ativo e livre.
 """
 from datetime import datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
+from django.db.models import Count
+from django.db.models.functions import TruncDate
 from django.utils import timezone
 
-from apps.cadastros.models import Equipamento
+from apps.cadastros.models import Equipamento, Professor, TipoSessao
 
-from .models import Sessao
+from . import expediente
+from .models import BloqueioEquipamento, Sessao
+
+FUSO_SAO_PAULO = ZoneInfo("America/Sao_Paulo")
 
 
 def calcular_janelas(inicio, fim, tipo_sessao):
@@ -62,7 +69,10 @@ def equipamento_ativo(equipamento):
 
 
 def professor_disponivel(professor, prof_inicio, prof_fim, excluir_sessao_id=None):
-    sessoes = Sessao.objects.filter(professor=professor).exclude(status=Sessao.Status.CANCELADA)
+    sessoes = (
+        Sessao.objects.filter(professor=professor, prof_inicio__lt=prof_fim, prof_fim__gt=prof_inicio)
+        .exclude(status=Sessao.Status.CANCELADA)
+    )
     if excluir_sessao_id:
         sessoes = sessoes.exclude(pk=excluir_sessao_id)
 
@@ -72,11 +82,30 @@ def professor_disponivel(professor, prof_inicio, prof_fim, excluir_sessao_id=Non
     return True
 
 
+def aluno_disponivel(aluno, inicio, fim, excluir_sessao_id=None):
+    """O aluno não pode estar em duas sessões (não canceladas) no mesmo horário."""
+    sessoes = (
+        Sessao.objects.filter(aluno=aluno, inicio__lt=fim, fim__gt=inicio)
+        .exclude(status=Sessao.Status.CANCELADA)
+    )
+    if excluir_sessao_id:
+        sessoes = sessoes.exclude(pk=excluir_sessao_id)
+
+    for sessao in sessoes:
+        if _periodos_se_sobrepoem(inicio, fim, sessao.inicio, sessao.fim):
+            return False
+    return True
+
+
 def equipamento_disponivel(equipamento, reserva_inicio, reserva_fim, excluir_sessao_id=None):
     if equipamento is None:
         return True
 
-    sessoes = Sessao.objects.filter(equipamento=equipamento).exclude(status=Sessao.Status.CANCELADA)
+    sessoes = (
+        Sessao.objects.filter(
+            equipamento=equipamento, reserva_inicio__lt=reserva_fim, reserva_fim__gt=reserva_inicio
+        ).exclude(status=Sessao.Status.CANCELADA)
+    )
     if excluir_sessao_id:
         sessoes = sessoes.exclude(pk=excluir_sessao_id)
 
@@ -90,11 +119,17 @@ def equipamento_disponivel(equipamento, reserva_inicio, reserva_fim, excluir_ses
     return True
 
 
-def motivo_indisponibilidade(professor, equipamento, inicio, fim, tipo_sessao, excluir_sessao_id=None):
+def motivo_indisponibilidade(professor, equipamento, inicio, fim, tipo_sessao, aluno, excluir_sessao_id=None):
     """Retorna uma mensagem explicando por que o horário não pode ser confirmado,
-    ou None se professor e equipamento estiverem livres e aptos."""
+    ou None se professor, aluno e equipamento estiverem livres e aptos."""
+    if not professor.ativo:
+        return f"{professor} não está ativo."
+
     if not professor_habilitado(professor, tipo_sessao):
         return f'{professor} não está habilitado para o tipo de sessão "{tipo_sessao}".'
+
+    if tipo_sessao.requer_equipamento and equipamento is None:
+        return f'O tipo de sessão "{tipo_sessao}" exige um equipamento.'
 
     reserva_inicio, reserva_fim, prof_inicio, prof_fim = calcular_janelas(inicio, fim, tipo_sessao)
 
@@ -103,6 +138,9 @@ def motivo_indisponibilidade(professor, equipamento, inicio, fim, tipo_sessao, e
 
     if not professor_disponivel(professor, prof_inicio, prof_fim, excluir_sessao_id):
         return f"{professor} já tem outra sessão nesse horário."
+
+    if not aluno_disponivel(aluno, inicio, fim, excluir_sessao_id):
+        return f"{aluno} já tem outra sessão nesse horário."
 
     if not equipamento_ativo(equipamento):
         return f"{equipamento} está {equipamento.get_status_display().lower()} e não pode ser reservado."
@@ -113,61 +151,101 @@ def motivo_indisponibilidade(professor, equipamento, inicio, fim, tipo_sessao, e
     return None
 
 
-def verificar_disponibilidade(professor, equipamento, inicio, fim, tipo_sessao, excluir_sessao_id=None):
-    """Retorna True se professor e equipamento estiverem livres e aptos no horário pedido."""
+def verificar_disponibilidade(professor, equipamento, inicio, fim, tipo_sessao, aluno, excluir_sessao_id=None):
+    """Retorna True se professor, aluno e equipamento estiverem livres e aptos no horário pedido."""
     return (
-        motivo_indisponibilidade(professor, equipamento, inicio, fim, tipo_sessao, excluir_sessao_id)
+        motivo_indisponibilidade(professor, equipamento, inicio, fim, tipo_sessao, aluno, excluir_sessao_id)
         is None
     )
 
 
-ABERTURA_PADRAO = time(7, 0)
-FECHAMENTO_PADRAO = time(21, 0)
 PASSO_SUGESTAO_MIN = 30
 LIMITE_SUGESTOES = 6
 
+_LIMITES_PERIODO = {
+    "manha": (None, time(12, 0)),
+    "tarde": (time(12, 0), time(18, 0)),
+    "noite": (time(18, 0), None),
+}
 
-def sugerir_horarios(
+
+def _limites_periodo(periodo):
+    if periodo is None:
+        return None, None
+    if periodo not in _LIMITES_PERIODO:
+        raise ValueError(f'Período inválido: "{periodo}". Use "manha", "tarde" ou "noite".')
+    return _LIMITES_PERIODO[periodo]
+
+
+def _momentos_candidatos(dia, duracao, abertura, fechamento, passo, hora_desejada, periodo):
+    """Lista (ordenada por proximidade do horário desejado) de horários de
+    início candidatos dentro do expediente do dia, respeitando `periodo`
+    (manhã/tarde/noite) e descartando horários que já passaram."""
+    inicio_expediente = timezone.make_aware(datetime.combine(dia, abertura))
+    fim_expediente = timezone.make_aware(datetime.combine(dia, fechamento))
+    agora = timezone.now()
+    alvo = (
+        timezone.make_aware(datetime.combine(dia, hora_desejada))
+        if hora_desejada
+        else max(inicio_expediente, agora)
+    )
+    periodo_inicio, periodo_fim = _limites_periodo(periodo)
+
+    momentos = []
+    momento = inicio_expediente
+    while momento + duracao <= fim_expediente:
+        dentro_do_periodo = (periodo_inicio is None or momento.time() >= periodo_inicio) and (
+            periodo_fim is None or momento.time() < periodo_fim
+        )
+        if momento >= agora and dentro_do_periodo:
+            momentos.append(momento)
+        momento += passo
+    momentos.sort(key=lambda m: (abs((m - alvo).total_seconds()), m))
+    return momentos
+
+
+def _vagas_professor(
     *,
     professor,
     tipo_sessao,
     dia,
     equipamento_preferido=None,
+    equipamentos=None,
     hora_desejada=None,
-    abertura=ABERTURA_PADRAO,
-    fechamento=FECHAMENTO_PADRAO,
-    passo_min=PASSO_SUGESTAO_MIN,
+    periodo=None,
+    abertura=None,
+    fechamento=None,
+    passo_min=None,
     limite=LIMITE_SUGESTOES,
 ):
-    """Agenda inteligente: varre o expediente do dia e devolve até `limite`
-    combinações (equipamento, início, fim) livres para o professor e tipo de
-    sessão pedidos — no máximo uma por equipamento, priorizando o equipamento
-    preferido e o horário mais próximo do desejado. Devolve lista vazia se o
-    professor não estiver habilitado para o tipo de sessão.
+    """Agenda inteligente para UM professor: varre o expediente do dia e
+    devolve até `limite` combinações (equipamento, início, fim) livres para
+    esse professor e tipo de sessão — no máximo uma por equipamento,
+    priorizando o equipamento preferido e o horário mais próximo do
+    desejado. Devolve lista vazia se o professor não estiver habilitado
+    para o tipo de sessão.
 
-    Para não repetir consultas ao banco a cada combinação de horário ×
-    equipamento, as sessões/disponibilidades do professor e as
-    sessões/bloqueios de cada equipamento são carregados uma única vez e as
-    sobreposições são checadas em memória."""
+    Compartilhado por `sugerir_horarios` (uso externo, professor fixo) e
+    `buscar_vagas` (varre vários professores). Para não repetir consultas
+    ao banco a cada combinação de horário × equipamento, as sessões/
+    disponibilidades do professor e as sessões/bloqueios de cada
+    equipamento são carregados uma única vez e as sobreposições são
+    checadas em memória."""
     if not professor_habilitado(professor, tipo_sessao):
         return []
 
+    abertura = abertura if abertura is not None else expediente.ABERTURA
+    fechamento = fechamento if fechamento is not None else expediente.FECHAMENTO
+    passo_min = passo_min if passo_min is not None else PASSO_SUGESTAO_MIN
+
     duracao = timedelta(minutes=tipo_sessao.duracao_min)
-    inicio_expediente = timezone.make_aware(datetime.combine(dia, abertura))
-    fim_expediente = timezone.make_aware(datetime.combine(dia, fechamento))
-    agora = timezone.now()
     passo = timedelta(minutes=passo_min)
-    alvo = timezone.make_aware(datetime.combine(dia, hora_desejada)) if hora_desejada else max(inicio_expediente, agora)
+    momentos = _momentos_candidatos(dia, duracao, abertura, fechamento, passo, hora_desejada, periodo)
 
-    momentos = []
-    momento = inicio_expediente
-    while momento + duracao <= fim_expediente:
-        if momento >= agora:
-            momentos.append(momento)
-        momento += passo
-    momentos.sort(key=lambda m: (abs((m - alvo).total_seconds()), m))
-
-    equipamentos = list(Equipamento.objects.filter(status=Equipamento.Status.ATIVO).order_by("nome"))
+    if equipamentos is None:
+        equipamentos = list(Equipamento.objects.filter(status=Equipamento.Status.ATIVO).order_by("nome"))
+    else:
+        equipamentos = [e for e in equipamentos if e.status == Equipamento.Status.ATIVO]
     if equipamento_preferido is not None:
         equipamentos.sort(key=lambda e: e.pk != equipamento_preferido.pk)
 
@@ -225,3 +303,196 @@ def sugerir_horarios(
             if len(sugestoes) >= limite:
                 return sugestoes
     return sugestoes
+
+
+def sugerir_horarios(
+    *,
+    professor,
+    tipo_sessao,
+    dia,
+    equipamento_preferido=None,
+    hora_desejada=None,
+    abertura=None,
+    fechamento=None,
+    passo_min=None,
+    limite=LIMITE_SUGESTOES,
+):
+    """Agenda inteligente: varre o expediente do dia e devolve até `limite`
+    combinações (equipamento, início, fim) livres para o professor e tipo de
+    sessão pedidos — no máximo uma por equipamento, priorizando o equipamento
+    preferido e o horário mais próximo do desejado. Devolve lista vazia se o
+    professor não estiver habilitado para o tipo de sessão."""
+    return _vagas_professor(
+        professor=professor,
+        tipo_sessao=tipo_sessao,
+        dia=dia,
+        equipamento_preferido=equipamento_preferido,
+        hora_desejada=hora_desejada,
+        abertura=abertura,
+        fechamento=fechamento,
+        passo_min=passo_min,
+        limite=limite,
+    )
+
+
+def buscar_vagas(
+    *,
+    tipo_sessao,
+    dia,
+    professor=None,
+    equipamento=None,
+    hora_desejada=None,
+    periodo=None,
+    limite=8,
+):
+    """Vagas livres no dia para o tipo de sessão pedido, no formato
+    {"professor", "equipamento", "inicio", "fim"}.
+
+    Sem `professor` fixado, varre todos os professores ativos habilitados
+    para o tipo de sessão (em vez de um único professor fixo). `periodo`
+    filtra os horários candidatos do dia: "manha" (antes das 12h), "tarde"
+    (12h–18h) ou "noite" (depois das 18h), dentro do expediente do estúdio."""
+    if professor is not None:
+        professores = [professor] if professor.ativo else []
+    else:
+        professores = list(
+            Professor.objects.filter(ativo=True, tipos_habilitados=tipo_sessao).distinct().order_by("pk")
+        )
+
+    equipamentos_fixos = [equipamento] if equipamento is not None else None
+
+    vagas = []
+    for prof in professores:
+        restantes = limite - len(vagas)
+        if restantes <= 0:
+            break
+        encontradas = _vagas_professor(
+            professor=prof,
+            tipo_sessao=tipo_sessao,
+            dia=dia,
+            equipamento_preferido=equipamento,
+            equipamentos=equipamentos_fixos,
+            hora_desejada=hora_desejada,
+            periodo=periodo,
+            limite=restantes,
+        )
+        for encontrada in encontradas:
+            vagas.append(
+                {
+                    "professor": prof,
+                    "equipamento": encontrada["equipamento"],
+                    "inicio": encontrada["inicio"],
+                    "fim": encontrada["fim"],
+                }
+            )
+    return vagas
+
+
+def resumo_do_dia(dia):
+    """Resumo administrativo do dia: contagens gerais, ocupação por
+    equipamento e a próxima vaga livre (qualquer professor/equipamento).
+
+    `total_sessoes` e `por_status` consideram TODAS as sessões do dia
+    (inclusive canceladas, para mostrar o quanto foi cancelado); as demais
+    métricas (`por_professor`, `por_equipamento`, `alunos_distintos`,
+    `ocupacao_pct`) consideram só as sessões não canceladas, já que só
+    essas de fato ocupam professor/equipamento."""
+    inicio_dia = timezone.make_aware(datetime.combine(dia, time.min))
+    fim_dia = inicio_dia + timedelta(days=1)
+
+    todas = list(
+        Sessao.objects.filter(inicio__gte=inicio_dia, inicio__lt=fim_dia).select_related(
+            "professor__usuario", "equipamento", "aluno"
+        )
+    )
+    ativas = [s for s in todas if s.status != Sessao.Status.CANCELADA]
+
+    por_status = {}
+    for sessao in todas:
+        por_status[sessao.status] = por_status.get(sessao.status, 0) + 1
+
+    por_professor = {}
+    for sessao in ativas:
+        nome = str(sessao.professor)
+        por_professor[nome] = por_professor.get(nome, 0) + 1
+
+    minutos_expediente = expediente.MINUTOS_EXPEDIENTE
+    equipamentos_ativos = list(Equipamento.objects.filter(status=Equipamento.Status.ATIVO))
+    ids_ativos = [e.pk for e in equipamentos_ativos]
+
+    minutos_reservados_por_equip = {}
+    qtd_por_equip = {}
+    for sessao in ativas:
+        if sessao.equipamento_id is None:
+            continue
+        minutos = (sessao.reserva_fim - sessao.reserva_inicio).total_seconds() / 60
+        minutos_reservados_por_equip[sessao.equipamento_id] = (
+            minutos_reservados_por_equip.get(sessao.equipamento_id, 0) + minutos
+        )
+        qtd_por_equip[sessao.equipamento_id] = qtd_por_equip.get(sessao.equipamento_id, 0) + 1
+
+    minutos_bloqueados_por_equip = {}
+    bloqueios = BloqueioEquipamento.objects.filter(
+        equipamento_id__in=ids_ativos, inicio__lt=fim_dia, fim__gt=inicio_dia
+    )
+    for bloqueio in bloqueios:
+        sobreposicao = min(bloqueio.fim, fim_dia) - max(bloqueio.inicio, inicio_dia)
+        minutos_bloqueados_por_equip[bloqueio.equipamento_id] = minutos_bloqueados_por_equip.get(
+            bloqueio.equipamento_id, 0
+        ) + max(0, sobreposicao.total_seconds() / 60)
+
+    por_equipamento = {}
+    total_reservado = 0.0
+    capacidade_total = 0.0
+    for equipamento in equipamentos_ativos:
+        reservados = minutos_reservados_por_equip.get(equipamento.pk, 0)
+        bloqueados = min(minutos_expediente, minutos_bloqueados_por_equip.get(equipamento.pk, 0))
+        capacidade_equip = max(0, minutos_expediente - bloqueados)
+        pct = round(reservados / capacidade_equip * 100) if capacidade_equip else 0
+        por_equipamento[equipamento.nome] = {
+            "qtd": qtd_por_equip.get(equipamento.pk, 0),
+            "ocupacao_pct": pct,
+        }
+        total_reservado += reservados
+        capacidade_total += capacidade_equip
+
+    ocupacao_pct = round(total_reservado / capacidade_total * 100) if capacidade_total else 0
+    alunos_distintos = len({s.aluno_id for s in ativas})
+
+    hoje = timezone.localdate()
+    proxima_vaga = None
+    if dia >= hoje:
+        candidatas = []
+        for tipo in TipoSessao.objects.filter(ativo=True):
+            encontradas = buscar_vagas(tipo_sessao=tipo, dia=dia, limite=1)
+            if encontradas:
+                candidatas.append(encontradas[0])
+        if candidatas:
+            proxima_vaga = min(candidatas, key=lambda vaga: vaga["inicio"])
+
+    return {
+        "total_sessoes": len(todas),
+        "por_status": por_status,
+        "por_professor": por_professor,
+        "por_equipamento": por_equipamento,
+        "alunos_distintos": alunos_distintos,
+        "ocupacao_pct": ocupacao_pct,
+        "proxima_vaga": proxima_vaga,
+    }
+
+
+def contagem_por_dia(inicio, fim):
+    """Quantidade de sessões não canceladas por dia, no intervalo [inicio,
+    fim] (datas), agrupando pelo horário real (`inicio`) da sessão já
+    convertido para o fuso horário de São Paulo — para uma sessão perto da
+    meia-noite não "vazar" para o dia UTC errado. Uma única query.
+    Devolve {date: qtd}."""
+    linhas = (
+        Sessao.objects.exclude(status=Sessao.Status.CANCELADA)
+        .annotate(dia=TruncDate("inicio", tzinfo=FUSO_SAO_PAULO))
+        .filter(dia__gte=inicio, dia__lte=fim)
+        .values("dia")
+        .annotate(qtd=Count("id"))
+        .order_by("dia")
+    )
+    return {linha["dia"]: linha["qtd"] for linha in linhas}

@@ -8,8 +8,8 @@ from django.utils import timezone
 from apps.cadastros.models import Aluno, Equipamento, Professor, TipoSessao
 from apps.contas.models import Usuario
 
-from . import motor, servicos
-from .models import DisponibilidadeProfessor
+from . import expediente, motor, servicos
+from .models import BloqueioEquipamento, DisponibilidadeProfessor, Sessao
 
 
 def _horario(dia, hora, minuto=0):
@@ -103,6 +103,216 @@ class RegrasDeAgendaTests(TestCase):
             equipamento=self.equipamento, inicio=self.inicio, fim=self.fim,
         )
         self.assertNotEqual(sessao.pk, nova.pk)
+
+    def test_rejeita_conflito_de_aluno(self):
+        servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento, inicio=self.inicio, fim=self.fim,
+        )
+        outro_usuario = Usuario.objects.create_user("leo", papel=Usuario.Papel.PROFESSOR)
+        outro_professor = Professor.objects.create(usuario=outro_usuario)
+        outro_professor.tipos_habilitados.add(self.tipo)
+        outro_equipamento = Equipamento.objects.create(nome="Equip. 02")
+
+        # mesmo aluno, professor e equipamento diferentes: só o conflito do
+        # aluno deve derrubar o agendamento.
+        with self.assertRaisesMessage(ValidationError, f"{self.aluno} já tem outra sessão"):
+            servicos.agendar(
+                professor=outro_professor, aluno=self.aluno, tipo=self.tipo,
+                equipamento=outro_equipamento,
+                inicio=self.inicio + timedelta(minutes=10), fim=self.fim + timedelta(minutes=10),
+            )
+
+    def test_rejeita_sem_equipamento_quando_tipo_exige(self):
+        tipo_exige = TipoSessao.objects.create(nome="Avaliação", duracao_min=30, requer_equipamento=True)
+        self.professor.tipos_habilitados.add(tipo_exige)
+        fim = self.inicio + timedelta(minutes=30)
+
+        with self.assertRaisesMessage(ValidationError, "exige um equipamento"):
+            servicos.agendar(
+                professor=self.professor, aluno=self.aluno, tipo=tipo_exige,
+                equipamento=None, inicio=self.inicio, fim=fim,
+            )
+
+    def test_permite_com_equipamento_quando_tipo_exige(self):
+        tipo_exige = TipoSessao.objects.create(nome="Avaliação", duracao_min=30, requer_equipamento=True)
+        self.professor.tipos_habilitados.add(tipo_exige)
+        fim = self.inicio + timedelta(minutes=30)
+
+        sessao = servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=tipo_exige,
+            equipamento=self.equipamento, inicio=self.inicio, fim=fim,
+        )
+
+        self.assertEqual(sessao.equipamento, self.equipamento)
+
+    def test_rejeita_professor_inativo(self):
+        self.professor.ativo = False
+        self.professor.save()
+
+        with self.assertRaisesMessage(ValidationError, "não está ativo"):
+            servicos.agendar(
+                professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+                equipamento=self.equipamento, inicio=self.inicio, fim=self.fim,
+            )
+
+    def test_select_for_update_nao_quebra_no_sqlite(self):
+        sessao = servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento, inicio=self.inicio, fim=self.fim,
+        )
+
+        remarcada = servicos.remarcar(
+            sessao=sessao,
+            inicio=self.inicio + timedelta(hours=1),
+            fim=self.fim + timedelta(hours=1),
+        )
+
+        self.assertEqual(remarcada.pk, sessao.pk)
+
+
+class BuscarVagasTests(TestCase):
+    """`buscar_vagas` varre vários professores quando nenhum é fixado."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45, preparo_min=10, troca_min=10)
+        usuario_a = Usuario.objects.create_user("bia", papel=Usuario.Papel.PROFESSOR)
+        usuario_b = Usuario.objects.create_user("leo", papel=Usuario.Papel.PROFESSOR)
+        self.professor_a = Professor.objects.create(usuario=usuario_a)
+        self.professor_b = Professor.objects.create(usuario=usuario_b)
+        self.professor_a.tipos_habilitados.add(self.tipo)
+        self.professor_b.tipos_habilitados.add(self.tipo)
+        self.aluno = Aluno.objects.create(nome="Mariana")
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+        self.dia = timezone.localdate() + timedelta(days=1)
+
+    def _ocupa_professor_o_dia_todo(self, professor):
+        """Cria uma sessão "guarda-chuva" que cobre todo o expediente do dia
+        para o professor, simulando uma agenda cheia sem depender dos
+        detalhes de `servicos.agendar`."""
+        equipamento_bloqueio = Equipamento.objects.create(nome=f"Bloqueio {professor.pk}")
+        inicio = timezone.make_aware(datetime.combine(self.dia, expediente.ABERTURA))
+        fim = timezone.make_aware(datetime.combine(self.dia, expediente.FECHAMENTO))
+        Sessao.objects.create(
+            professor=professor, aluno=self.aluno, tipo=self.tipo, equipamento=equipamento_bloqueio,
+            inicio=inicio, fim=fim, reserva_inicio=inicio, reserva_fim=fim,
+            prof_inicio=inicio, prof_fim=fim, status=Sessao.Status.AGENDADA,
+        )
+
+    def test_sem_professor_fixado_escolhe_outro_professor_quando_o_preferido_esta_ocupado(self):
+        self._ocupa_professor_o_dia_todo(self.professor_a)
+
+        vagas = motor.buscar_vagas(tipo_sessao=self.tipo, dia=self.dia)
+
+        self.assertTrue(vagas)
+        professores_nas_vagas = {v["professor"].pk for v in vagas}
+        self.assertNotIn(self.professor_a.pk, professores_nas_vagas)
+        self.assertIn(self.professor_b.pk, professores_nas_vagas)
+
+    def test_com_professor_fixado_nao_varre_outros(self):
+        self._ocupa_professor_o_dia_todo(self.professor_a)
+
+        vagas = motor.buscar_vagas(tipo_sessao=self.tipo, dia=self.dia, professor=self.professor_a)
+
+        self.assertEqual(vagas, [])
+
+
+class ResumoDoDiaTests(TestCase):
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45, preparo_min=10, troca_min=10)
+        usuario = Usuario.objects.create_user("bia", papel=Usuario.Papel.PROFESSOR)
+        self.professor = Professor.objects.create(usuario=usuario)
+        self.professor.tipos_habilitados.add(self.tipo)
+        self.aluno = Aluno.objects.create(nome="Mariana")
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+        self.equipamento_manutencao = Equipamento.objects.create(
+            nome="Equip. 02", status=Equipamento.Status.MANUTENCAO
+        )
+        self.dia = timezone.localdate() + timedelta(days=1)
+        self.inicio = timezone.make_aware(
+            datetime.combine(self.dia, datetime.min.time()) + timedelta(hours=10)
+        )
+        self.fim = self.inicio + timedelta(minutes=self.tipo.duracao_min)
+
+    def _minutos_reservados_da_sessao(self):
+        return (
+            (self.fim + timedelta(minutes=self.tipo.troca_min))
+            - (self.inicio - timedelta(minutes=self.tipo.preparo_min))
+        ).total_seconds() / 60
+
+    def test_desconta_bloqueio_da_capacidade_do_equipamento(self):
+        servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento, inicio=self.inicio, fim=self.fim,
+        )
+        bloqueio_inicio = timezone.make_aware(
+            datetime.combine(self.dia, datetime.min.time()) + timedelta(hours=15)
+        )
+        BloqueioEquipamento.objects.create(
+            equipamento=self.equipamento, inicio=bloqueio_inicio, fim=bloqueio_inicio + timedelta(hours=4),
+        )
+
+        resumo = motor.resumo_do_dia(self.dia)
+
+        reservados_min = self._minutos_reservados_da_sessao()
+        capacidade_com_bloqueio = expediente.MINUTOS_EXPEDIENTE - 240
+        pct_esperado = round(reservados_min / capacidade_com_bloqueio * 100)
+        pct_sem_bloqueio = round(reservados_min / expediente.MINUTOS_EXPEDIENTE * 100)
+
+        self.assertEqual(resumo["por_equipamento"]["Equip. 01"]["ocupacao_pct"], pct_esperado)
+        self.assertGreater(pct_esperado, pct_sem_bloqueio)
+
+    def test_equipamento_em_manutencao_nao_conta_na_capacidade(self):
+        servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento, inicio=self.inicio, fim=self.fim,
+        )
+
+        resumo = motor.resumo_do_dia(self.dia)
+
+        self.assertNotIn("Equip. 02", resumo["por_equipamento"])
+        reservados_min = self._minutos_reservados_da_sessao()
+        pct_esperado = round(reservados_min / expediente.MINUTOS_EXPEDIENTE * 100)
+        self.assertEqual(resumo["ocupacao_pct"], pct_esperado)
+
+
+class ContagemPorDiaTests(TestCase):
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45)
+        usuario = Usuario.objects.create_user("bia", papel=Usuario.Papel.PROFESSOR)
+        self.professor = Professor.objects.create(usuario=usuario)
+        self.professor.tipos_habilitados.add(self.tipo)
+        self.aluno = Aluno.objects.create(nome="Mariana")
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+
+    def test_ignora_cancelada_e_respeita_fuso_horario_perto_da_meia_noite(self):
+        dia = timezone.localdate() + timedelta(days=2)
+        outro_dia = dia + timedelta(days=1)
+
+        # sessão às 23h30 no horário de São Paulo: em UTC já é madrugada do
+        # dia seguinte — precisa continuar contando para `dia`, não para
+        # `outro_dia`, se o fuso horário estiver correto.
+        inicio_23h30 = timezone.make_aware(
+            datetime.combine(dia, datetime.min.time()) + timedelta(hours=23, minutes=30)
+        )
+        servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento, inicio=inicio_23h30, fim=inicio_23h30 + timedelta(minutes=45),
+        )
+
+        inicio_cancelada = timezone.make_aware(
+            datetime.combine(outro_dia, datetime.min.time()) + timedelta(hours=10)
+        )
+        sessao_cancelada = servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento, inicio=inicio_cancelada, fim=inicio_cancelada + timedelta(minutes=45),
+        )
+        servicos.cancelar(sessao=sessao_cancelada)
+
+        contagem = motor.contagem_por_dia(dia, outro_dia)
+
+        self.assertEqual(contagem.get(dia), 1)
+        self.assertNotIn(outro_dia, contagem)
 
 
 @override_settings(
