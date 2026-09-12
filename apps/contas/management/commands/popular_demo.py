@@ -1,20 +1,31 @@
 """
 Cria usuários e dados de demonstração:
 gestora (Carla), administrador (Admin), professores (Bia, Leo, Felipe) e aluna (Mariana),
-mais equipamentos, tipo de sessão, planos e algumas sessões de exemplo.
+mais equipamentos, tipo de sessão, planos e sessões de exemplo espalhadas pelos
+próximos 14 dias (pra faixa de dias da grade ter contagem/nível pra mostrar) e
+um bloqueio de equipamento (pra ter ocupação "real" descontada na grade).
 Senha de todos: demo1234
 """
-from datetime import datetime, timedelta
+import random
+from datetime import datetime, time, timedelta
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from apps.agenda import servicos
+from apps.agenda.models import BloqueioEquipamento
 from apps.cadastros.models import Aluno, Equipamento, Professor, TipoSessao
 from apps.contas.models import Usuario
 from apps.planos.models import Contratacao, Plano
 
 SENHA_DEMO = "demo1234"
+
+# Dias de agenda de demonstração a espalhar a partir de hoje (inclusive) e
+# horas candidatas por dia — fixo (sem `random.seed` global) pra o comando
+# gerar sempre a mesma agenda a cada execução, já que `agendar` é idempotente
+# na prática (colisão de horário só é ignorada via try/except, ver abaixo).
+DIAS_DEMO = 14
+HORAS_CANDIDATAS = [8, 9, 10, 13, 14, 15, 16, 17]
 
 
 class Command(BaseCommand):
@@ -110,6 +121,53 @@ class Command(BaseCommand):
             )
         except Exception:
             pass
+
+        # Sessões variadas nos próximos 14 dias (professor/equipamento/horário
+        # diferentes), pra grade (Etapa 2) ter contagem/nível de ocupação real
+        # pra mostrar. `servicos.agendar` já valida tudo (professor, equipamento,
+        # aluno, expediente) — se o horário sorteado colidir por acaso com outra
+        # sessão, só ignora e segue, como já fazia a sessão-âncora acima.
+        equipamentos_ativos = [e for e in equipamentos if e.status == Equipamento.Status.ATIVO]
+        professores_lista = list(professores.values())
+        alunos_para_sessoes = [aluna_mariana] + outros_alunos
+        rng = random.Random(42)  # fixo: mesma agenda de demo a cada execução
+
+        for dia_offset in range(DIAS_DEMO):
+            dia = hoje + timedelta(days=dia_offset)
+            quantidade_no_dia = rng.randint(2, 5)
+            horas_do_dia = rng.sample(HORAS_CANDIDATAS, k=min(quantidade_no_dia, len(HORAS_CANDIDATAS)))
+
+            for hora in horas_do_dia:
+                inicio = timezone.make_aware(datetime.combine(dia, time(hora, 0)))
+                fim = inicio + timedelta(minutes=tipo_sessao.duracao_min)
+                professor = rng.choice(professores_lista)
+                equipamento = rng.choice(equipamentos_ativos)
+                aluno = rng.choice(alunos_para_sessoes)
+                try:
+                    servicos.agendar(
+                        professor=professor,
+                        aluno=aluno,
+                        tipo=tipo_sessao,
+                        inicio=inicio,
+                        fim=fim,
+                        equipamento=equipamento,
+                        usuario=gestora,
+                    )
+                except Exception:
+                    pass
+
+        # Bloqueio de equipamento (ex.: manutenção de manhã) pra Etapa 1/2
+        # terem uma ocupação real descontando vaga na grade/painel.
+        manha_amanha = timezone.make_aware(datetime.combine(hoje + timedelta(days=1), time(8, 0)))
+        BloqueioEquipamento.objects.get_or_create(
+            equipamento=equipamentos_ativos[0],
+            inicio=manha_amanha,
+            fim=manha_amanha + timedelta(hours=2),
+            defaults={
+                "motivo": BloqueioEquipamento.Motivo.MANUTENCAO,
+                "descricao": "Manutenção preventiva agendada (demo).",
+            },
+        )
 
         self.stdout.write(
             self.style.SUCCESS(

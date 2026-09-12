@@ -20,3 +20,18 @@ services:
         sync: false          # ex.: https://studiofitness.com.br
       - key: ALLOWED_HOSTS
         sync: false          # ex.: studiofitness.com.br,www.studiofitness.com.br
+      # Assistente da agenda (chat com LLM) — ver apps/assistente/ e CLAUDE.md.
+      - key: ASSISTENTE_ATIVO
+        value: "False"        # mudar pra "True" só depois de configurar uma chave abaixo
+      - key: LLM_PROVEDORES
+        value: "groq,gemini"  # ordem de tentativa; Groq primeiro (ver README, seção de privacidade)
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: "llama-3.3-70b-versatile"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: "gemini-2.5-flash"
+      - key: LLM_TIMEOUT_S
+        value: "12"

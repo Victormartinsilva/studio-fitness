@@ -444,6 +444,90 @@ dialog.modal-cartao[open] {
 .login { max-width: 380px; margin: 8vh auto 0; display: flex; flex-direction: column; gap: 24px; }
 .login img.logo { width: 168px; align-self: center; }
 
+/* ---------- assistente (chat flutuante) ---------- */
+.assistente-botao {
+  position: fixed; right: 16px; z-index: 32;
+  bottom: calc(62px + env(safe-area-inset-bottom) + 14px);
+  width: 52px; height: 52px; flex: none; border-radius: 50%;
+  background: var(--roxo); color: #fff; border: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; line-height: 1; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(46,18,56,.28);
+}
+.assistente-botao:hover { background: #5a2170; }
+
+.assistente-painel {
+  position: fixed; inset: 0; z-index: 33;
+  background: var(--superficie);
+  display: flex; flex-direction: column;
+}
+.assistente-painel[hidden] { display: none; }
+
+.assistente-cabecalho {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid var(--borda);
+  background: var(--roxo-claro); flex: none;
+}
+.assistente-cabecalho h2 { margin: 0; color: var(--roxo); }
+.assistente-fechar {
+  border: none; background: transparent; font-size: 26px; line-height: 1;
+  color: var(--ink-4); cursor: pointer; padding: 0 4px;
+}
+.assistente-fechar:hover { color: var(--roxo); }
+
+.assistente-chips {
+  display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px;
+  border-bottom: 1px solid var(--borda); flex: none;
+}
+
+.assistente-historico {
+  flex: 1; overflow-y: auto; padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+.assistente-msg {
+  max-width: 84%; padding: 9px 12px; border-radius: var(--r-md);
+  font-size: 14px; line-height: 1.4; white-space: pre-wrap;
+}
+.assistente-msg.usuario {
+  align-self: flex-end; background: var(--roxo); color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.assistente-msg.assistente {
+  align-self: flex-start; background: var(--fundo); color: var(--ink);
+  border: 1px solid var(--borda); border-bottom-left-radius: 4px;
+}
+.assistente-msg.erro { border-color: var(--vermelho); color: var(--vermelho); }
+.assistente-msg.digitando { color: var(--ink-3); font-style: italic; }
+
+.assistente-cartao {
+  align-self: flex-start; max-width: 92%; width: 100%;
+  background: var(--superficie); border: 1px solid var(--borda-forte);
+  border-left: 4px solid var(--roxo); border-radius: var(--r-md);
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
+  font-size: 14px;
+}
+.assistente-cartao .resumo { color: var(--ink); }
+.assistente-cartao .btn { align-self: flex-start; }
+.assistente-cartao.confirmado { opacity: .6; }
+.assistente-cartao .aviso-cartao { color: var(--vermelho); font-size: 13px; }
+.assistente-cartao .aviso-cartao[hidden] { display: none; }
+
+.assistente-form {
+  display: flex; gap: 8px; padding: 12px 16px; flex: none;
+  border-top: 1px solid var(--borda); background: var(--superficie);
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+}
+.assistente-form input {
+  flex: 1; min-height: 42px; padding: 0 12px;
+  border: 1px solid var(--borda-forte); border-radius: var(--r-md);
+  font-size: 15px;
+}
+.assistente-form input:focus {
+  outline: none; border-color: var(--roxo); box-shadow: 0 0 0 3px rgba(111,42,134,.12);
+}
+.assistente-form button { flex: none; }
+
 /* ---------- desktop ---------- */
 @media (min-width: 900px) {
   .topbar { height: 62px; padding: 0 24px; gap: 20px; }
@@ -468,4 +552,13 @@ dialog.modal-cartao[open] {
   .painel-colunas { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 20px; align-items: start; }
   .form-2col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
   .login { margin-top: 12vh; }
+  .assistente-botao { bottom: 24px; }
+  .assistente-painel {
+    inset: auto; right: 24px; bottom: 88px;
+    width: min(380px, calc(100vw - 48px));
+    height: min(560px, calc(100vh - 140px));
+    border-radius: var(--r-lg); border: 1px solid var(--borda);
+    box-shadow: 0 20px 60px rgba(36,16,44,.28);
+  }
+  .assistente-form { padding-bottom: 12px; }
 }

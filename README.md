@@ -39,4 +39,8 @@ python manage.py test
 ## Deploy
 
 Render (Web Service) + Neon (Postgres), ambos em us-east-1. Veja a seção 9 do [plano](docs/PLANO.md#9-deploy-e-ambientes).
+
+## Assistente (chat com LLM) — privacidade
+
+O assistente (`apps/assistente/`) usa provedores gratuitos de LLM (Groq e/ou Gemini). No plano gratuito, o provedor pode usar o conteúdo das conversas para melhorar os próprios produtos — confirme os termos atuais de cada um antes de usar em produção com dados reais de clientes. Por isso o app manda ao provedor só o mínimo necessário (primeiro nome + IDs, nunca telefone/e-mail/observações) e usa o Groq como provedor padrão. Fica desativado por padrão (`ASSISTENTE_ATIVO=False`); só ative depois de revisar essa política com o cliente do estúdio.
 # studio-fitness

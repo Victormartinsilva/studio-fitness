@@ -50,9 +50,21 @@ This is the part of the codebase that requires cross-file understanding:
   Also: `EventoSessao` (append-only audit log per session action), `DisponibilidadeProfessor` (weekly availability), `BloqueioEquipamento` (equipment downtime, e.g. maintenance).
 - **`motor.py`** — pure rule engine, no side effects. `calcular_janelas(inicio, fim, tipo_sessao)` derives the three window pairs above from a session's real start/end plus its `TipoSessao`'s prep/cleanup minutes. `professor_disponivel` / `equipamento_disponivel` / `verificar_disponibilidade` check for overlapping bookings (and, for equipment, `BloqueioEquipamento` rows) by brute-force scanning that professor's/equipment's non-cancelled sessions — there's no DB-level range query. Change scheduling rules here.
 - **`servicos.py`** — the only place that should mutate a `Sessao`: `agendar` / `remarcar` / `cancelar`, each `@transaction.atomic`, each calling into `motor` for conflict checks before writing, and each appending an `EventoSessao`. Views call these instead of touching the model directly. Change what happens on schedule/reschedule/cancel here.
+- **`expediente.py`** — single source of truth for the studio's opening/closing hours, read from `settings.AGENDA_ABERTURA_HORA`/`AGENDA_FECHAMENTO_HORA` (default 7h–21h). Only `motor.py` consumes it so far; `grade.py` and `painel/views.py` still have their own hardcoded hours — migrating them is future work, noted in the module's own docstring.
 - Views (`views.py`) stay thin: they resolve the requesting user's permissions, build a form, and delegate to `servicos`.
 
 When touching scheduling behavior, the chain to trace is: `TipoSessao` config (prep/cleanup minutes, `professor_no_preparo`) → `motor.calcular_janelas` → `motor.verificar_disponibilidade` → `servicos.agendar`/`remarcar`. Prep/cleanup timing is editable from the Django admin (Tipos de sessão) without code changes.
+
+### The assistant (`apps/assistente/`)
+
+A chat assistant layered on top of the scheduling engine, backed by a free-tier LLM (Groq and/or Gemini, OpenAI-compatible chat/completions API, tried in order via `LLM_PROVEDORES`). Only active when `settings.ASSISTENTE_ATIVO` is `True` (requires the env var **and** at least one provider API key — see `config/settings.py`); otherwise its endpoints 404 and the floating chat button doesn't render.
+
+- **Golden rule: the model never writes, it only proposes.** Every tool the LLM can call (`apps/assistente/ferramentas.py`) either reads data or, for scheduling/cancelling, validates and returns a signed token describing the proposed action (`propor_agendamento`/`propor_cancelamento`) — nothing touches the database at that point.
+- Two endpoints (`views.py`, both `@login_required`, standard Django CSRF):
+  - `POST /assistente/mensagem` — runs the user's message through the tool-calling loop (`conversa.py` → `llm.py`) and returns `{"resposta": "...", "cartoes": [...]}`; each cartão is a proposal with a `token` and a human-readable `resumo`.
+  - `POST /assistente/confirmar` — takes a `token`, re-validates availability (it may have changed since the proposal), and only then calls `apps.agenda.servicos` to actually write the `Sessao`.
+- `conversa.py` also owns the per-user rate limit and the short conversation history kept in the session; `llm.py` is the only module that speaks HTTP to a provider, and is what tests mock.
+- The frontend (`templates/base.html` + `static/js/assistente.js`) is a floating button/drawer, vanilla JS only, gated by the `assistente_ativo` context processor (`apps/assistente/context_processors.py`).
 
 ### Settings & deploy
 

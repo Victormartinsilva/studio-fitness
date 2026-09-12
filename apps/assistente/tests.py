@@ -13,7 +13,7 @@ from apps.agenda.models import EventoSessao, Sessao
 from apps.cadastros.models import Aluno, Equipamento, Professor, TipoSessao
 from apps.contas.models import Usuario
 
-from . import ferramentas, llm
+from . import context_processors, ferramentas, llm
 from .ferramentas import TOKEN_SALT
 
 
@@ -464,3 +464,52 @@ class AssistenteTestCase(TestCase):
             content_type="application/json",
         )
         self.assertEqual(resposta.status_code, 404)
+
+
+# -- context processor / botão flutuante (Etapa 3b — frontend) -------------
+
+
+class AssistenteContextProcessorTests(TestCase):
+    def test_expoe_true_quando_settings_ativa(self):
+        with override_settings(ASSISTENTE_ATIVO=True):
+            contexto = context_processors.assistente_ativo(request=None)
+        self.assertEqual(contexto, {"assistente_ativo": True})
+
+    def test_expoe_false_quando_settings_desativa(self):
+        with override_settings(ASSISTENTE_ATIVO=False):
+            contexto = context_processors.assistente_ativo(request=None)
+        self.assertEqual(contexto, {"assistente_ativo": False})
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class AssistenteBotaoFlutuanteTests(TestCase):
+    """O botão/gaveta em templates/base.html só deve aparecer para usuário
+    logado E com o assistente ativo — cobertura só do server-side (o JS não
+    é testado aqui, não há ferramenta de browser)."""
+
+    def setUp(self):
+        self.usuario = Usuario.objects.create_user(
+            "bia", password="demo1234", papel=Usuario.Papel.PROFESSOR
+        )
+
+    @override_settings(ASSISTENTE_ATIVO=True)
+    def test_botao_aparece_para_usuario_logado_com_assistente_ativo(self):
+        self.client.login(username="bia", password="demo1234")
+        resposta = self.client.get(reverse("painel:home"))
+        self.assertContains(resposta, 'id="assistente-botao"')
+
+    @override_settings(ASSISTENTE_ATIVO=False)
+    def test_botao_nao_aparece_com_assistente_desativado(self):
+        self.client.login(username="bia", password="demo1234")
+        resposta = self.client.get(reverse("painel:home"))
+        self.assertNotContains(resposta, 'id="assistente-botao"')
+
+    @override_settings(ASSISTENTE_ATIVO=True)
+    def test_botao_nao_aparece_para_usuario_nao_logado(self):
+        resposta = self.client.get(reverse("contas:login"))
+        self.assertNotContains(resposta, 'id="assistente-botao"')

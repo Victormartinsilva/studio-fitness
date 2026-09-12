@@ -76,5 +76,37 @@
         {% endif %}
     </nav>
     {% endif %}
+
+    {% if request.user.is_authenticated and assistente_ativo %}
+    <button type="button" id="assistente-botao" class="assistente-botao" aria-haspopup="dialog" aria-controls="assistente-painel" aria-expanded="false" title="Assistente">
+        <span aria-hidden="true">💬</span>
+    </button>
+
+    <section id="assistente-painel" class="assistente-painel" role="dialog" aria-modal="false" aria-labelledby="assistente-titulo" hidden>
+        <header class="assistente-cabecalho">
+            <h2 id="assistente-titulo">Assistente</h2>
+            <button type="button" id="assistente-fechar" class="assistente-fechar" aria-label="Fechar assistente">&times;</button>
+        </header>
+
+        <div class="assistente-chips">
+            {% if request.user.is_gestor or request.user.is_professor %}
+            <button type="button" class="chip assistente-sugestao">Quantos atendimentos hoje?</button>
+            <button type="button" class="chip assistente-sugestao">Quem está livre às 15h?</button>
+            <button type="button" class="chip assistente-sugestao">Agendar Mariana amanhã de manhã</button>
+            {% elif request.user.is_aluno %}
+            <button type="button" class="chip assistente-sugestao">Quais minhas próximas sessões?</button>
+            {% endif %}
+        </div>
+
+        <div id="assistente-historico" class="assistente-historico" aria-live="polite"></div>
+
+        <form id="assistente-form" class="assistente-form">
+            <input type="text" id="assistente-input" name="mensagem" placeholder="Digite sua mensagem..." autocomplete="off" maxlength="500">
+            <button type="submit" id="assistente-enviar" class="btn btn-sm">Enviar</button>
+        </form>
+    </section>
+
+    <script src="{% static 'js/assistente.js' %}" defer></script>
+    {% endif %}
 </body>
 </html>
