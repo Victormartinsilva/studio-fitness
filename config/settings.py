@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "apps.avaliacoes",
     "apps.modulos",
     "apps.painel",
+    "apps.assistente",
 ]
 
 AUTH_USER_MODEL = "contas.Usuario"
@@ -134,3 +135,47 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "/contas/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/contas/login/"
+
+# --- Assistente da agenda (chat com LLM) ---------------------------------
+# Provedores gratuitos (formato OpenAI chat/completions), tentados na ordem
+# de LLM_PROVEDORES até um responder; sem nenhuma chave configurada, o
+# assistente fica indisponível e o botão correspondente não deve aparecer.
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
+# Ativo só se a env var pedir E houver ao menos uma chave configurada —
+# assim um `.env` com ASSISTENTE_ATIVO=True esquecido, mas sem chave, não
+# quebra nada: o app funciona normal e o botão do assistente some.
+ASSISTENTE_ATIVO = (
+    os.environ.get("ASSISTENTE_ATIVO", "False") == "True" and bool(GROQ_API_KEY or GEMINI_API_KEY)
+)
+
+LLM_PROVEDORES = [
+    p.strip() for p in os.environ.get("LLM_PROVEDORES", "groq,gemini").split(",") if p.strip()
+]
+
+LLM_TIMEOUT_S = float(os.environ.get("LLM_TIMEOUT_S") or "12")
+
+# base_url de cada provedor não é segredo (fica fixo no código, em llm.py);
+# aqui só a chave/modelo, que são específicos do ambiente.
+LLM_PROVEDORES_CONFIG = {
+    "groq": {
+        "base_url": "https://api.groq.com/openai/v1",
+        "chave": GROQ_API_KEY,
+        "modelo": os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"),
+    },
+    "gemini": {
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "chave": GEMINI_API_KEY,
+        "modelo": os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+    },
+}
+
+# Mensagens por usuário permitidas na janela de rate limit (ver
+# apps/assistente/conversa.py). Usa o cache padrão (LocMemCache, já que não
+# há CACHES configurado no projeto) — funciona bem para um único worker,
+# mas cada worker do gunicorn em produção tem seu próprio cache em memória,
+# então o limite real acaba sendo "por worker", não globalmente por usuário.
+# Aceitável para um rate limit best-effort num app de baixo tráfego.
+ASSISTENTE_RATE_LIMIT_MSGS = int(os.environ.get("ASSISTENTE_RATE_LIMIT_MSGS") or "20")
+ASSISTENTE_RATE_LIMIT_JANELA_S = int(os.environ.get("ASSISTENTE_RATE_LIMIT_JANELA_S") or "600")

@@ -4,3 +4,4 @@ psycopg[binary]>=3.2
 whitenoise>=6.9
 gunicorn>=23.0
 python-dotenv>=1.0
+httpx>=0.27

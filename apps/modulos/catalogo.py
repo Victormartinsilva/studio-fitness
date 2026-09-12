@@ -57,6 +57,14 @@ MODULOS = (
         4,
         "Gestão",
     ),
+    Modulo(
+        slug="assistente",
+        titulo="Assistente da agenda",
+        descricao="Chat com IA para consultar a agenda e propor agendamentos/cancelamentos.",
+        fase=1,
+        publico="gestor, professor e aluno",
+        liberado=True,
+    ),
 )
 
 

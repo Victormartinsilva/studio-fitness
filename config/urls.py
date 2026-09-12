@@ -9,5 +9,6 @@ urlpatterns = [
     path("agenda/", include("apps.agenda.urls")),
     path("avaliacoes/", include("apps.avaliacoes.urls")),
     path("modulos/", include("apps.modulos.urls")),
+    path("assistente/", include("apps.assistente.urls")),
     path("", include("apps.painel.urls")),
 ]

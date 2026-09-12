@@ -14,7 +14,9 @@ from .models import EventoSessao, Sessao
 
 
 @transaction.atomic
-def agendar(*, professor, aluno, tipo, inicio, fim, equipamento=None, contratacao=None, usuario=None):
+def agendar(
+    *, professor, aluno, tipo, inicio, fim, equipamento=None, contratacao=None, usuario=None, detalhe=""
+):
     # Lock nas linhas de professor/equipamento durante toda a checagem +
     # gravação, para não deixar duas requisições concorrentes passarem pela
     # checagem de disponibilidade e só depois colidirem na gravação.
@@ -52,7 +54,7 @@ def agendar(*, professor, aluno, tipo, inicio, fim, equipamento=None, contrataca
     )
     sessao.full_clean()
     sessao.save()
-    EventoSessao.objects.create(sessao=sessao, usuario=usuario, acao="criada")
+    EventoSessao.objects.create(sessao=sessao, usuario=usuario, acao="criada", detalhe=detalhe)
     return sessao
 
 
@@ -86,9 +88,14 @@ def remarcar(*, sessao, inicio, fim, equipamento=None, usuario=None):
 
 
 @transaction.atomic
-def cancelar(*, sessao, justificativa="", usuario=None):
+def cancelar(*, sessao, justificativa="", usuario=None, detalhe=""):
     sessao.status = Sessao.Status.CANCELADA
     sessao.justificativa = justificativa
     sessao.save(update_fields=["status", "justificativa", "atualizado_em"])
-    EventoSessao.objects.create(sessao=sessao, usuario=usuario, acao="cancelada", detalhe=justificativa)
+    # `detalhe` é um complemento opcional pro registro do evento (ex.: "via
+    # assistente"); sem ele, mantém o comportamento antigo de registrar a
+    # própria justificativa como detalhe do evento.
+    EventoSessao.objects.create(
+        sessao=sessao, usuario=usuario, acao="cancelada", detalhe=detalhe or justificativa
+    )
     return sessao
