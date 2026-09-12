@@ -415,6 +415,17 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 .dia-mes.fora-do-mes .num { color: var(--ink-4); }
 .dia-mes.hoje { background: var(--roxo); color: #fff; }
 .dia-mes.hoje .num { color: #fff; }
+/* Pontinhos de status (célula do mês): um por status presente no dia
+   (ex. vermelho = teve falta, cinza = teve cancelamento), no lugar de
+   texto de evento — não cabe texto legível numa célula de ~46px no
+   celular, mas os pontos ainda dão uma leitura rápida do dia sem abrir. */
+.pontos-status { display: flex; flex-wrap: wrap; gap: 3px; margin-top: auto; }
+.ponto { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.ponto-roxo { background: var(--roxo); }
+.ponto-verde { background: var(--verde); }
+.ponto-vermelho { background: var(--vermelho); }
+.ponto-cinza { background: var(--ink-4); }
+.dia-mes.hoje .ponto { box-shadow: 0 0 0 1px rgba(255,255,255,.6); }
 
 /* ---------- agenda: visão de ano ---------- */
 .grade-meses { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }

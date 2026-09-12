@@ -25,7 +25,11 @@
            href="{% url 'agenda:grade' %}?data={{ dia.data|date:'Y-m-d' }}#dia-atual">
             <span class="num">{{ dia.data|date:"j" }}</span>
             {% if dia.qtd > 0 %}<span class="badge-dia">{{ dia.qtd }}</span>{% endif %}
-            <span class="barra-dia nivel-{{ dia.nivel }}"></span>
+            {% if dia.pontos %}
+            <span class="pontos-status">
+                {% for cor in dia.pontos %}<span class="ponto ponto-{{ cor }}"></span>{% endfor %}
+            </span>
+            {% endif %}
         </a>
         {% endfor %}
     </div>

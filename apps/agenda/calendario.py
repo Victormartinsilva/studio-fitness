@@ -11,8 +11,23 @@ from django.shortcuts import render
 from django.utils import timezone
 
 from . import motor
+from .models import Sessao
 
 DIA_SEMANA_INICIAL = calendar.SUNDAY  # calendários no Brasil começam no domingo
+
+# Cor do pontinho de status no calendário de mês, por status da sessão —
+# mesma linguagem de cor já usada em .tag.ok/.aviso/.critico no resto do
+# app (verde = ok, vermelho = atenção), mais um cinza neutro pra cancelada.
+_COR_POR_STATUS = {
+    Sessao.Status.AGENDADA: "roxo",
+    Sessao.Status.CONFIRMADA: "verde",
+    Sessao.Status.REALIZADA: "verde",
+    Sessao.Status.FALTOU: "vermelho",
+    Sessao.Status.CANCELADA: "cinza",
+}
+# Ordem de exibição dos pontos (não a ordem do enum de status): o que pede
+# mais atenção primeiro.
+_ORDEM_PONTOS = ("vermelho", "roxo", "verde", "cinza")
 
 
 def _mes_ano_seguro(request, hoje):
@@ -52,12 +67,15 @@ def mes(request):
         ano, mes_num = hoje.year, hoje.month
         dias_do_mes = list(cal.itermonthdates(ano, mes_num))
 
-    contagem = motor.contagem_por_dia(dias_do_mes[0], dias_do_mes[-1])
+    contagem = motor.contagem_por_dia_e_status(dias_do_mes[0], dias_do_mes[-1])
 
     dias = []
     total_mes = 0
     for data_dia in dias_do_mes:
-        qtd = contagem.get(data_dia, 0)
+        por_status = contagem.get(data_dia, {})
+        qtd = sum(q for status, q in por_status.items() if status != Sessao.Status.CANCELADA)
+        cores_do_dia = {_COR_POR_STATUS[status] for status, q in por_status.items() if q > 0}
+        pontos = [cor for cor in _ORDEM_PONTOS if cor in cores_do_dia]
         no_mes = data_dia.month == mes_num
         if no_mes:
             total_mes += qtd
@@ -66,7 +84,7 @@ def mes(request):
             "no_mes": no_mes,
             "hoje": data_dia == hoje,
             "qtd": qtd,
-            "nivel": motor.nivel_de_movimento(qtd),
+            "pontos": pontos,
         })
 
     mes_anterior = mes_num - 1 or 12

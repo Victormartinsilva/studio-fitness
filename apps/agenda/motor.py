@@ -523,6 +523,26 @@ def contagem_por_dia(inicio, fim):
     return {linha["dia"]: linha["qtd"] for linha in linhas}
 
 
+def contagem_por_dia_e_status(inicio, fim):
+    """Quantidade de sessões por dia E status, no intervalo [inicio, fim]
+    (datas), mesmo agrupamento por fuso horário de `contagem_por_dia`.
+    Ao contrário dela, INCLUI canceladas — usado pelo calendário de mês
+    pra colorir um ponto por status presente no dia (ex. vermelho quando
+    houve falta, cinza quando houve cancelamento). Uma única query.
+    Devolve {date: {status: qtd}}."""
+    linhas = (
+        Sessao.objects.annotate(dia=TruncDate("inicio", tzinfo=FUSO_SAO_PAULO))
+        .filter(dia__gte=inicio, dia__lte=fim)
+        .values("dia", "status")
+        .annotate(qtd=Count("id"))
+        .order_by("dia")
+    )
+    resultado = {}
+    for linha in linhas:
+        resultado.setdefault(linha["dia"], {})[linha["status"]] = linha["qtd"]
+    return resultado
+
+
 def contagem_por_mes_do_ano(ano):
     """Quantidade de sessões não canceladas por mês, no ano inteiro.
     Reaproveita `contagem_por_dia` numa única query (ano inteiro) e soma

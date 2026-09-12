@@ -315,6 +315,41 @@ class ContagemPorDiaTests(TestCase):
         self.assertNotIn(outro_dia, contagem)
 
 
+class ContagemPorDiaEStatusTests(TestCase):
+    """`contagem_por_dia_e_status`: base dos pontinhos de status no
+    calendário de mês — ao contrário de `contagem_por_dia`, INCLUI
+    canceladas (o mês precisa saber que houve cancelamento naquele dia)."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45)
+        usuario = Usuario.objects.create_user("bia", papel=Usuario.Papel.PROFESSOR)
+        self.professor = Professor.objects.create(usuario=usuario)
+        self.professor.tipos_habilitados.add(self.tipo)
+        self.aluno = Aluno.objects.create(nome="Mariana")
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+
+    def test_agrupa_por_dia_e_status_incluindo_cancelada(self):
+        dia = timezone.localdate() + timedelta(days=3)
+
+        inicio_agendada = timezone.make_aware(datetime.combine(dia, datetime.min.time()) + timedelta(hours=9))
+        servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento, inicio=inicio_agendada, fim=inicio_agendada + timedelta(minutes=45),
+        )
+
+        inicio_cancelada = timezone.make_aware(datetime.combine(dia, datetime.min.time()) + timedelta(hours=11))
+        sessao_cancelada = servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento, inicio=inicio_cancelada, fim=inicio_cancelada + timedelta(minutes=45),
+        )
+        servicos.cancelar(sessao=sessao_cancelada)
+
+        contagem = motor.contagem_por_dia_e_status(dia, dia)
+
+        self.assertEqual(contagem[dia][Sessao.Status.AGENDADA], 1)
+        self.assertEqual(contagem[dia][Sessao.Status.CANCELADA], 1)
+
+
 @override_settings(
     STORAGES={
         "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
@@ -719,6 +754,38 @@ class CalendarioMesTests(TestCase):
         response = self.client.get(url)
 
         self.assertContains(response, '<span class="badge-dia">3</span>')
+
+    def test_dia_com_falta_mostra_ponto_vermelho_e_nao_conta_cancelada_no_badge(self):
+        hoje = timezone.localdate()
+        dia_no_mes = hoje.replace(day=1) + timedelta(days=15)
+
+        inicio_faltou = timezone.make_aware(
+            datetime.combine(dia_no_mes, datetime.min.time()) + timedelta(hours=9)
+        )
+        sessao_faltou = servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento, inicio=inicio_faltou, fim=inicio_faltou + timedelta(minutes=45),
+        )
+        sessao_faltou.status = Sessao.Status.FALTOU
+        sessao_faltou.save(update_fields=["status"])
+
+        inicio_cancelada = timezone.make_aware(
+            datetime.combine(dia_no_mes, datetime.min.time()) + timedelta(hours=11)
+        )
+        sessao_cancelada = servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento, inicio=inicio_cancelada, fim=inicio_cancelada + timedelta(minutes=45),
+        )
+        servicos.cancelar(sessao=sessao_cancelada)
+
+        url = reverse("agenda:mes") + f"?ano={dia_no_mes.year}&mes={dia_no_mes.month}"
+        response = self.client.get(url)
+
+        dia_ctx = next(d for d in response.context["dias"] if d["data"] == dia_no_mes)
+        self.assertEqual(dia_ctx["qtd"], 1)  # so a "faltou" conta, cancelada nao
+        self.assertEqual(dia_ctx["pontos"], ["vermelho", "cinza"])
+        self.assertContains(response, '<span class="ponto ponto-vermelho"></span>')
+        self.assertContains(response, '<span class="ponto ponto-cinza"></span>')
 
     def test_inclui_dias_do_mes_anterior_e_seguinte_para_completar_a_semana(self):
         # Setembro de 2026 não começa num domingo nem termina num sábado —
