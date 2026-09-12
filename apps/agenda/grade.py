@@ -24,6 +24,8 @@ SLOT_MIN_MINIMO = 15     # não mostra sobra de vaga menor que isso no fim de um
 
 
 GAP_PX = 3               # espaço visual entre reservas distintas (evita blocos "colados")
+DIAS_ANTES_NA_FAIXA = 7  # quantos dias antes do selecionado aparecem na faixa rolável
+DIAS_DEPOIS_NA_FAIXA = 14  # quantos dias depois do selecionado aparecem na faixa rolável
 
 
 def _minutos(momento, dia):
@@ -194,7 +196,10 @@ def grade(request):
         if s.equipamento_id
     )
     capacidade = max(1, len(colunas)) * (HORA_FIM - HORA_INICIO) * 60
-    segunda = dia - timedelta(days=dia.weekday())
+    # Faixa rolável de dias: uma semana antes e duas semanas depois do dia
+    # visto, para o usuário arrastar/rolar lateralmente até a data desejada
+    # sem precisar clicar em "‹"/"›" repetidas vezes.
+    faixa_inicio = dia - timedelta(days=DIAS_ANTES_NA_FAIXA)
 
     return render(
         request,
@@ -205,9 +210,12 @@ def grade(request):
             "hoje": hoje,
             "dia_anterior": dia - timedelta(days=1),
             "dia_seguinte": dia + timedelta(days=1),
-            "semana": [
-                {"data": segunda + timedelta(days=i), "selecionado": segunda + timedelta(days=i) == dia}
-                for i in range(6)
+            "faixa_dias": [
+                {
+                    "data": faixa_inicio + timedelta(days=i),
+                    "selecionado": faixa_inicio + timedelta(days=i) == dia,
+                }
+                for i in range(DIAS_ANTES_NA_FAIXA + DIAS_DEPOIS_NA_FAIXA + 1)
             ],
             "horas": ["{:02d}:00".format(h) for h in range(HORA_INICIO, HORA_FIM)],
             "altura_hora": ALTURA_HORA,

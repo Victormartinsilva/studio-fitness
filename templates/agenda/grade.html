@@ -2,9 +2,16 @@
 {% block title %}Agenda — Studio Fitness{% endblock %}
 {% block content %}
 <div class="linha-titulo">
-    <h1>{{ data|date:"l, j \\d\\e F" }}</h1>
-    <a class="btn btn-secundario btn-sm" href="?data={{ dia_anterior|date:'Y-m-d' }}">‹</a>
-    <a class="btn btn-secundario btn-sm" href="?data={{ dia_seguinte|date:'Y-m-d' }}">›</a>
+    <details class="calendario-picker">
+        <summary class="titulo-dia">{{ data|date:"l, j \\d\\e F" }}</summary>
+        <form method="get" class="calendario-form" action="{% url 'agenda:grade' %}#dia-atual">
+            <label class="sub" for="id_data_calendario">Ir para o dia</label>
+            <input type="date" id="id_data_calendario" name="data" value="{{ data|date:'Y-m-d' }}">
+            <button type="submit">Ir</button>
+        </form>
+    </details>
+    <a class="btn btn-secundario btn-sm" href="?data={{ dia_anterior|date:'Y-m-d' }}#dia-atual">‹</a>
+    <a class="btn btn-secundario btn-sm" href="?data={{ dia_seguinte|date:'Y-m-d' }}#dia-atual">›</a>
     <p class="sub">{{ total_sessoes }} sessões · ocupação {{ ocupacao }}%</p>
     <span class="espaco"></span>
     <a class="btn btn-secundario btn-sm" href="{% url 'agenda:minhas_sessoes' %}">Lista</a>
@@ -12,13 +19,15 @@
 </div>
 
 <div class="faixa-dias" style="margin-bottom:12px">
-    {% for dia in semana %}
-    <a href="?data={{ dia.data|date:'Y-m-d' }}" class="{% if dia.selecionado %}hoje{% endif %}">
+    {% for dia in faixa_dias %}
+    <a href="?data={{ dia.data|date:'Y-m-d' }}#dia-atual" {% if dia.selecionado %}id="dia-atual" class="hoje"{% endif %}>
         <span class="dia">{{ dia.data|date:"D" }}</span>
         <span class="num">{{ dia.data|date:"d" }}</span>
+        <span class="mes">{{ dia.data|date:"M" }}</span>
     </a>
     {% endfor %}
 </div>
+
 
 <div class="grade">
     <div class="horas">

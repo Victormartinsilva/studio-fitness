@@ -4,20 +4,50 @@
 <div class="linha-titulo">
     <div>
         <h1>Configurar visões dos usuários</h1>
-        <p class="sub">Escolha quais módulos em desenvolvimento aparecem como prévia ("Em breve") no painel de cada perfil.</p>
+        <p class="sub">Escolha quais eixos da plataforma cada perfil enxerga: seções da navegação já liberadas e módulos ainda em desenvolvimento.</p>
     </div>
-    <span class="espaco"></span>
-    <a class="btn btn-secundario btn-sm" href="{% url 'modulos:indice' %}">Voltar aos módulos</a>
 </div>
 
 <div class="card">
+    <h2>Seções da navegação</h2>
+    <p class="sub" style="margin:0 0 12px">Esconda ou mostre links do menu por perfil (gestor, professor, aluno). Células em branco indicam que o eixo não se aplica a esse perfil.</p>
     <form method="post">
         {% csrf_token %}
+        <input type="hidden" name="eixos_enviados" value="1">
+        <table class="tabela-visoes">
+            <thead>
+                <tr>
+                    <th>Eixo</th>
+                    {% for papel, rotulo in papeis_eixos %}<th>{{ rotulo }}</th>{% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for linha in linhas_eixos %}
+                <tr>
+                    <td><strong>{{ linha.eixo.rotulo }}</strong></td>
+                    {% for papel in linha.papeis %}
+                    <td>
+                        {% if papel.aplicavel %}
+                        <input type="checkbox" name="eixo__{{ papel.papel }}__{{ linha.eixo.slug }}" {% if papel.marcado %}checked{% endif %}>
+                        {% else %}
+                        <span class="sub">—</span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% empty %}
+                <tr><td colspan="{{ papeis_eixos|length|add:1 }}">Nenhum eixo configurável no momento.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2 style="margin-top:20px">Módulos em desenvolvimento</h2>
+        <p class="sub" style="margin:0 0 12px">Escolha quais módulos ainda não liberados aparecem como prévia ("Em breve") no painel de cada perfil.</p>
         <table class="tabela-visoes">
             <thead>
                 <tr>
                     <th>Módulo</th>
-                    {% for papel in linhas.0.papeis %}<th>{{ papel.rotulo }}</th>{% endfor %}
+                    {% for papel, rotulo in papeis_modulos %}<th>{{ rotulo }}</th>{% endfor %}
                 </tr>
             </thead>
             <tbody>
@@ -34,7 +64,7 @@
                     {% endfor %}
                 </tr>
                 {% empty %}
-                <tr><td colspan="3">Nenhum módulo em desenvolvimento no momento.</td></tr>
+                <tr><td colspan="{{ papeis_modulos|length|add:1 }}">Nenhum módulo em desenvolvimento no momento.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

@@ -21,18 +21,23 @@
         {% if request.user.is_authenticated %}
         <nav class="nav-desktop">
             <a href="{% url 'painel:home' %}" class="{% if aba == 'inicio' %}ativo{% endif %}">Início</a>
-            <a href="{% url 'agenda:grade' %}" class="{% if aba == 'agenda' %}ativo{% endif %}">Agenda</a>
-            {% if request.user.is_professor %}
+            <a href="{% url 'agenda:grade' %}#dia-atual" class="{% if aba == 'agenda' %}ativo{% endif %}">Agenda</a>
+            {% if request.user.is_professor and eixos_visiveis.meus_alunos %}
             <a href="{% url 'cadastros:meus_alunos' %}" class="{% if aba == 'meus_alunos' %}ativo{% endif %}">Meus alunos</a>
             {% endif %}
-            {% if request.user.is_superuser %}
-            <a href="{% url 'modulos:indice' %}" class="{% if aba == 'modulos' %}ativo{% endif %}">Módulos</a>
-            {% endif %}
             {% if request.user.is_superuser or request.user.is_gestor %}
+            {% if request.user.is_superuser or eixos_visiveis.alunos %}
             <a href="{% url 'cadastros:alunos' %}" class="{% if aba == 'alunos' %}ativo{% endif %}">Alunos</a>
+            {% endif %}
+            {% if request.user.is_superuser or eixos_visiveis.equipamentos %}
             <a href="{% url 'cadastros:equipamentos' %}" class="{% if aba == 'equipamentos' %}ativo{% endif %}">Equipamentos</a>
+            {% endif %}
+            {% if request.user.is_superuser or eixos_visiveis.tipos_sessao %}
             <a href="{% url 'cadastros:tipos_sessao' %}" class="{% if aba == 'tipos' %}ativo{% endif %}">Tipos de sessão</a>
+            {% endif %}
+            {% if request.user.is_superuser or eixos_visiveis.planos %}
             <a href="{% url 'planos:planos' %}" class="{% if aba == 'planos' or aba == 'contratacoes' %}ativo{% endif %}">Planos</a>
+            {% endif %}
             {% endif %}
         </nav>
         {% endif %}
@@ -61,18 +66,19 @@
     </main>
 
     {% if request.user.is_authenticated %}
-    <nav class="tabs" style="grid-template-columns: repeat({% if request.user.is_superuser %}5{% elif request.user.is_gestor %}4{% elif request.user.is_professor %}3{% else %}2{% endif %}, 1fr)">
+    <nav class="tabs">
         <a href="{% url 'painel:home' %}" class="{% if aba == 'inicio' %}ativo{% endif %}">Início</a>
-        <a href="{% url 'agenda:grade' %}" class="{% if aba == 'agenda' %}ativo{% endif %}">Agenda</a>
-        {% if request.user.is_professor %}
+        <a href="{% url 'agenda:grade' %}#dia-atual" class="{% if aba == 'agenda' %}ativo{% endif %}">Agenda</a>
+        {% if request.user.is_professor and eixos_visiveis.meus_alunos %}
         <a href="{% url 'cadastros:meus_alunos' %}" class="{% if aba == 'meus_alunos' %}ativo{% endif %}">Meus alunos</a>
         {% endif %}
-        {% if request.user.is_superuser %}
-        <a href="{% url 'modulos:indice' %}" class="{% if aba == 'modulos' %}ativo{% endif %}">Módulos</a>
-        {% endif %}
         {% if request.user.is_superuser or request.user.is_gestor %}
+        {% if request.user.is_superuser or eixos_visiveis.alunos %}
         <a href="{% url 'cadastros:alunos' %}" class="{% if aba == 'alunos' %}ativo{% endif %}">Alunos</a>
+        {% endif %}
+        {% if request.user.is_superuser or eixos_visiveis.planos %}
         <a href="{% url 'planos:planos' %}" class="{% if aba == 'planos' or aba == 'contratacoes' %}ativo{% endif %}">Planos</a>
+        {% endif %}
         {% endif %}
     </nav>
     {% endif %}

@@ -62,3 +62,27 @@ MODULOS = (
 
 def obter_modulo(slug):
     return next((modulo for modulo in MODULOS if modulo.slug == slug), None)
+
+
+@dataclass(frozen=True)
+class Eixo:
+    """Uma seção/link real da navegação (não um módulo do roadmap) que o
+    administrador pode mostrar ou esconder por perfil — ex.: os itens do
+    menu que hoje só aparecem para gestor/professor por regra fixa."""
+
+    slug: str
+    rotulo: str
+    papeis_padrao: tuple  # perfis (Usuario.Papel) que veem este eixo por padrão
+
+
+EIXOS = (
+    Eixo("meus_alunos", "Meus alunos", ("professor",)),
+    Eixo("alunos", "Alunos", ("gestor",)),
+    Eixo("equipamentos", "Equipamentos", ("gestor",)),
+    Eixo("tipos_sessao", "Tipos de sessão", ("gestor",)),
+    Eixo("planos", "Planos", ("gestor",)),
+)
+
+
+def obter_eixo(slug):
+    return next((eixo for eixo in EIXOS if eixo.slug == slug), None)
