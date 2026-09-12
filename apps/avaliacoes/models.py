@@ -13,12 +13,12 @@ class AvaliacaoFisica(models.Model):
     percentual_gordura = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
     massa_magra_kg = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
 
-    braco_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    braco_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True, verbose_name="Braço (cm)")
     cintura_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
     quadril_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
     coxa_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
 
-    observacoes = models.TextField(blank=True)
+    observacoes = models.TextField(blank=True, verbose_name="Observações")
     registrado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, related_name="+", null=True, blank=True
     )

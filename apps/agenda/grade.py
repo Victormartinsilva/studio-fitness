@@ -163,6 +163,14 @@ def grade(request):
         request.user.professor if request.user.is_professor and hasattr(request.user, "professor") else None
     )
 
+    # Privacidade (LGPD): aluno logado só pode ver detalhes (hora, nome,
+    # professor, tipo) das PRÓPRIAS sessões. Sessão de outro aluno aparece
+    # como bloco "Ocupado", sem nenhuma informação identificável de
+    # terceiros — gestor e professor continuam vendo tudo normalmente.
+    aluno_logado = (
+        request.user.aluno if request.user.is_aluno and hasattr(request.user, "aluno") else None
+    )
+
     # Professor em destaque na grade: o filtro explícito `?professor=` tem
     # prioridade; sem filtro, cai no comportamento antigo de destacar as
     # sessões do próprio professor logado.
@@ -206,16 +214,23 @@ def grade(request):
                 blocos.append(_bloco("preparo", sessao.reserva_inicio, sessao.inicio, dia, inset_topo=True))
             if tem_troca:
                 blocos.append(_bloco("troca", sessao.fim, sessao.reserva_fim, dia, inset_base=True))
+            eh_sessao_de_outro_aluno = aluno_logado is not None and sessao.aluno_id != aluno_logado.id
+            if eh_sessao_de_outro_aluno:
+                titulo_sessao = "Ocupado"
+                subtitulo_sessao = ""
+            else:
+                titulo_sessao = "{:%H:%M} – {:%H:%M} · {}".format(
+                    timezone.localtime(sessao.inicio), timezone.localtime(sessao.fim), sessao.aluno
+                )
+                subtitulo_sessao = "{} · {}".format(sessao.professor, sessao.tipo)
             blocos.append(
                 _bloco(
                     classe_sessao,
                     sessao.inicio,
                     sessao.fim,
                     dia,
-                    titulo="{:%H:%M} – {:%H:%M} · {}".format(
-                        timezone.localtime(sessao.inicio), timezone.localtime(sessao.fim), sessao.aluno
-                    ),
-                    subtitulo="{} · {}".format(sessao.professor, sessao.tipo),
+                    titulo=titulo_sessao,
+                    subtitulo=subtitulo_sessao,
                     inset_topo=not tem_preparo,
                     inset_base=not tem_troca,
                 )

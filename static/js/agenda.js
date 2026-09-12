@@ -12,6 +12,30 @@
   "use strict";
 
   document.addEventListener("DOMContentLoaded", function () {
+    // ---- Sincroniza o scroll horizontal dos cabeçalhos de equipamento
+    // (`.grade-cabecas-lista`, linha sticky fora de `.colunas`) com o
+    // scroll horizontal real de `.grade .colunas`. Um único sentido
+    // (colunas -> cabeçalhos) é suficiente: o usuário nunca arrasta a
+    // linha de cabeçalhos diretamente (ela nem mostra barra de rolagem),
+    // então não há risco de loop de eventos entre os dois listeners.
+    const colunas = document.getElementById("grade-colunas");
+    const cabecasLista = document.getElementById("grade-cabecas-lista");
+    if (colunas && cabecasLista) {
+      colunas.addEventListener(
+        "scroll",
+        function () {
+          cabecasLista.scrollLeft = colunas.scrollLeft;
+        },
+        { passive: true }
+      );
+    }
+
+    // ---- Auto-scroll ao abrir a página: rola até a "linha do agora" ou,
+    // na falta dela, o primeiro horário ocupado do dia (`grade.py` calcula
+    // os dois em `linha_agora_top`/`scroll_inicial_top` e expõe via
+    // `data-*` no `.grade`). Sem isso a página sempre abre no topo do
+    // expediente (07:00), bem acima da dobra em qualquer dia com sessão
+    // marcada.
     const grade = document.querySelector(".grade");
     const pista = grade ? grade.querySelector(".pista") : null;
     if (!grade || !pista) {
@@ -29,14 +53,17 @@
     }
 
     // Posição absoluta na página = topo da pista + posição do alvo dentro
-    // dela, descontando o `.topbar` fixo (senão o alvo fica escondido
-    // atrás dele) e uma margem extra pra não colar no cabeçalho sticky da
-    // coluna de equipamento.
+    // dela, descontando o `.topbar` fixo e a linha de cabeçalhos sticky
+    // (`.grade-cabecas`, ambos ficam por cima do conteúdo depois de rolar)
+    // mais uma margem extra pra não colar em nenhum dos dois.
     const topbar = document.querySelector(".topbar");
+    const gradeCabecas = document.querySelector(".grade-cabecas");
     const alturaTopbar = topbar ? topbar.getBoundingClientRect().height : 0;
+    const alturaCabecas = gradeCabecas ? gradeCabecas.getBoundingClientRect().height : 0;
     const margem = 16;
 
-    const destino = pista.getBoundingClientRect().top + window.pageYOffset + alvoPx - alturaTopbar - margem;
+    const destino =
+      pista.getBoundingClientRect().top + window.pageYOffset + alvoPx - alturaTopbar - alturaCabecas - margem;
 
     // Duplo rAF (roda só depois que o navegador terminou de pintar o
     // primeiro frame): os links da página navegam com "#dia-atual" na URL

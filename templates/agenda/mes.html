@@ -2,7 +2,7 @@
 {% block title %}Agenda — {{ referencia|date:"F \\d\\e Y" }} — Studio Fitness{% endblock %}
 {% block content %}
 <div class="linha-titulo">
-    <h1 style="text-transform:capitalize">{{ referencia|date:"F \\d\\e Y" }}</h1>
+    <h1>{{ referencia|date:"F"|capfirst }} de {{ referencia|date:"Y" }}</h1>
     <a class="btn btn-secundario btn-sm" href="?ano={{ ano_mes_anterior }}&mes={{ mes_anterior }}">‹</a>
     <a class="btn btn-secundario btn-sm" href="?ano={{ ano_mes_seguinte }}&mes={{ mes_seguinte }}">›</a>
     <span class="espaco"></span>

@@ -962,3 +962,73 @@ class CalendarioAnoTests(TestCase):
                 response = self.client.get(reverse("agenda:ano") + querystring)
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.context["ano"], hoje.year)
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class PrivacidadeGradeAlunoTests(TestCase):
+    """Bug de privacidade (LGPD): logado como aluno, a grade do dia não pode
+    revelar nome (nem professor/tipo) da sessão de OUTRO aluno — só da
+    própria. Terceiros aparecem como bloco "Ocupado", sem detalhe algum."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(
+            nome="EMS", duracao_min=45, preparo_min=10, troca_min=10
+        )
+        usuario_professor = Usuario.objects.create_user(
+            "bia", password="teste12345", papel=Usuario.Papel.PROFESSOR
+        )
+        self.professor = Professor.objects.create(usuario=usuario_professor)
+        self.professor.tipos_habilitados.add(self.tipo)
+
+        self.usuario_aluno_a = Usuario.objects.create_user(
+            "mariana", password="teste12345", papel=Usuario.Papel.ALUNO
+        )
+        self.aluno_a = Aluno.objects.create(nome="Mariana Silva", usuario=self.usuario_aluno_a)
+        self.usuario_aluno_b = Usuario.objects.create_user(
+            "felipe", password="teste12345", papel=Usuario.Papel.ALUNO
+        )
+        self.aluno_b = Aluno.objects.create(nome="Felipe Souza", usuario=self.usuario_aluno_b)
+
+        self.equipamento_a = Equipamento.objects.create(nome="Equip. 01")
+        self.equipamento_b = Equipamento.objects.create(nome="Equip. 02")
+        self.dia = timezone.localdate() + timedelta(days=1)
+
+    def _agenda(self, aluno, hora, equipamento):
+        inicio = timezone.make_aware(
+            datetime.combine(self.dia, datetime.min.time()) + timedelta(hours=hora)
+        )
+        fim = inicio + timedelta(minutes=self.tipo.duracao_min)
+        return servicos.agendar(
+            professor=self.professor, aluno=aluno, tipo=self.tipo,
+            equipamento=equipamento, inicio=inicio, fim=fim,
+        )
+
+    def test_aluno_nao_ve_nome_de_outro_aluno_na_grade(self):
+        self._agenda(self.aluno_a, hora=10, equipamento=self.equipamento_a)
+        self._agenda(self.aluno_b, hora=14, equipamento=self.equipamento_b)
+        self.client.force_login(self.usuario_aluno_a)
+
+        url = reverse("agenda:grade") + f"?data={self.dia.isoformat()}"
+        response = self.client.get(url)
+
+        self.assertContains(response, "Mariana Silva")
+        self.assertNotContains(response, "Felipe Souza")
+        self.assertContains(response, "Ocupado")
+
+    def test_professor_continua_vendo_nome_de_todos_os_alunos(self):
+        # Confirma que a restrição é só pra papel "aluno" — professor e
+        # gestor não são afetados pelo filtro de privacidade.
+        self._agenda(self.aluno_a, hora=10, equipamento=self.equipamento_a)
+        self._agenda(self.aluno_b, hora=14, equipamento=self.equipamento_b)
+        self.client.force_login(self.professor.usuario)
+
+        url = reverse("agenda:grade") + f"?data={self.dia.isoformat()}"
+        response = self.client.get(url)
+
+        self.assertContains(response, "Mariana Silva")
+        self.assertContains(response, "Felipe Souza")

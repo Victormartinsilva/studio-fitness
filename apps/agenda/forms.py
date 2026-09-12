@@ -12,4 +12,6 @@ class AgendarForm(forms.Form):
         required=False,
     )
     data = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
-    hora_inicio = forms.TimeField(widget=forms.TimeInput(attrs={"type": "time"}))
+    hora_inicio = forms.TimeField(
+        label="Hora de início", widget=forms.TimeInput(attrs={"type": "time"})
+    )

@@ -46,21 +46,29 @@
 {% endif %}
 
 
+<div class="grade-cabecas">
+    <div class="grade-cabecas-espaco"></div>
+    <div class="grade-cabecas-lista" id="grade-cabecas-lista">
+        {% for coluna in colunas %}
+        <div class="cabeca">
+            <span class="nome-equip">{{ coluna.equipamento.nome }}</span>
+            {% if coluna.equipamento.status != 'ativo' %}
+            <span class="tag aviso">{{ coluna.equipamento.get_status_display|lower }}</span>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
 <div class="grade" data-linha-agora-top="{{ linha_agora_top|default:'' }}" data-scroll-inicial-top="{{ scroll_inicial_top|default:'' }}">
     <div class="horas">
         {% for hora in horas %}
         <div class="hora" style="height:{{ altura_hora }}px">{{ hora }}</div>
         {% endfor %}
     </div>
-    <div class="colunas">
+    <div class="colunas" id="grade-colunas">
         {% for coluna in colunas %}
         <div class="coluna">
-            <div class="cabeca">
-                <span class="nome-equip">{{ coluna.equipamento.nome }}</span>
-                {% if coluna.equipamento.status != 'ativo' %}
-                <span class="tag aviso">{{ coluna.equipamento.get_status_display|lower }}</span>
-                {% endif %}
-            </div>
             <div class="pista" style="height:{{ altura_pista }}px;background:repeating-linear-gradient(to bottom, #fff 0 {{ altura_hora_menos1 }}px, #f3eef6 {{ altura_hora_menos1 }}px {{ altura_hora }}px)">
                 {% if mostrar_linha_agora %}<div class="linha-agora" style="top:{{ linha_agora_top }}px"></div>{% endif %}
                 {% for v in coluna.vagas %}

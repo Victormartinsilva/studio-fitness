@@ -44,7 +44,7 @@ class Sessao(models.Model):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.AGENDADA)
     encaixe_manual = models.BooleanField(default=False)
     justificativa = models.TextField(blank=True)
-    observacoes = models.TextField(blank=True)
+    observacoes = models.TextField(blank=True, verbose_name="Observações")
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
@@ -66,7 +66,7 @@ class EventoSessao(models.Model):
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
     )
-    acao = models.CharField(max_length=20)
+    acao = models.CharField(max_length=20, verbose_name="Ação")
     detalhe = models.TextField(blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
@@ -91,8 +91,8 @@ class DisponibilidadeProfessor(models.Model):
 
     professor = models.ForeignKey(Professor, on_delete=models.CASCADE, related_name="disponibilidades")
     dia_semana = models.PositiveSmallIntegerField(choices=DiaSemana.choices)
-    hora_inicio = models.TimeField()
-    hora_fim = models.TimeField()
+    hora_inicio = models.TimeField(verbose_name="Hora de início")
+    hora_fim = models.TimeField(verbose_name="Hora de fim")
 
     class Meta:
         verbose_name = "Disponibilidade do professor"
@@ -113,7 +113,7 @@ class BloqueioEquipamento(models.Model):
     inicio = models.DateTimeField()
     fim = models.DateTimeField()
     motivo = models.CharField(max_length=20, choices=Motivo.choices, default=Motivo.OUTRO)
-    descricao = models.CharField(max_length=200, blank=True)
+    descricao = models.CharField(max_length=200, blank=True, verbose_name="Descrição")
 
     class Meta:
         verbose_name = "Bloqueio de equipamento"

@@ -113,13 +113,19 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 .pilha-lg { display: flex; flex-direction: column; gap: 16px; }
 
 /* ---------- botões ---------- */
-.btn, button[type="submit"], input[type="submit"] {
+/* `:where(...)` em torno dos seletores de elemento zera a especificidade
+   deles (fica 0,0,0) — sem isso, `button[type="submit"]` (0,1,1: uma
+   "classe" do atributo + o elemento) vencia `.btn-perigo`/`.btn-sair`
+   (0,1,0) mesmo vindo antes no arquivo, e todo "Excluir"/"Cancelar"/"Sair"
+   saía roxo e do tamanho de botão primário em vez do estilo discreto que
+   essas classes definem mais abaixo. */
+.btn, :where(button[type="submit"]), :where(input[type="submit"]) {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   min-height: 44px; padding: 0 16px;
   background: var(--roxo); color: #fff; border: none; border-radius: var(--r-md);
   font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
 }
-.btn:hover, button[type="submit"]:hover, input[type="submit"]:hover { background: #5a2170; color: #fff; }
+.btn:hover, :where(button[type="submit"]):hover, :where(input[type="submit"]):hover { background: #5a2170; color: #fff; }
 .btn-sm { min-height: 36px; padding: 0 12px; font-size: 13px; border-radius: var(--r-sm); }
 .btn-secundario {
   background: var(--superficie); color: var(--roxo);
@@ -191,7 +197,12 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
   display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px;
   border-radius: 999px; background: var(--superficie);
   border: 1px solid var(--borda-forte); color: var(--ink-2);
-  font-size: 13px; font-weight: 500;
+  /* `<button class="chip">` (chips de sugestão do assistente) não herda
+     `font-family` do body por padrão (regra do UA stylesheet pra
+     button/input/select/textarea) — sem isso, saía em Arial em vez da
+     fonte do app. `<a class="chip">` já herdava normalmente; o `font:
+     inherit` aqui não muda nada pra esse caso. */
+  font: inherit; font-size: 13px; font-weight: 500;
 }
 .chip.ativo { background: var(--roxo); border-color: var(--roxo); color: #fff; font-weight: 600; }
 .tag {
@@ -290,19 +301,51 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 .professores-picker[open] summary::after { content: " \25B4"; }
 .professores-picker .linha-professores { margin: 6px 0 0; }
 
+/* ---------- agenda: cabeçalhos dos equipamentos (linha própria, fora da
+   grade rolável) ---------- */
+/* Antes o cabeçalho (`.cabeca`) vivia dentro de `.grade .colunas`, com
+   `position: sticky`. Mas `.colunas` tem `overflow-x: auto` — e qualquer
+   ancestral com overflow diferente de `visible` se torna o "scroll
+   container" de referência do sticky dos filhos. Como é a JANELA que rola
+   verticalmente (não `.colunas`), o cabeçalho ficava sticky em relação à
+   COLUNA, não à página: grudava ~58px abaixo do topo de CADA coluna
+   (cobrindo o horário das 07:00) e desaparecia ao rolar pra tarde em vez de
+   acompanhar o scroll.
+   Correção: uma linha de cabeçalhos própria (`.grade-cabecas`), fora de
+   `.colunas`, sticky em relação à janela — com scroll horizontal próprio,
+   mas sem barra visível (`scrollbar-width`/`::-webkit-scrollbar`) porque
+   ele nunca é arrastado direto pelo usuário: é só espelhado do scroll de
+   `.grade .colunas` via JS (`static/js/agenda.js`), num único sentido, pra
+   não arriscar loop de eventos entre os dois. */
+.grade-cabecas {
+  position: sticky; top: 58px; z-index: 15;
+  display: flex; background: var(--superficie);
+  border: 1px solid var(--borda); border-bottom: none;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+.grade-cabecas-espaco { width: 50px; flex: none; border-right: 1px solid #f0ebf3; }
+.grade-cabecas-lista {
+  flex: 1; display: flex; overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+}
+.grade-cabecas-lista::-webkit-scrollbar { display: none; } /* Chrome/Safari/iOS */
+.grade-cabecas .cabeca {
+  height: 40px; display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 0 6px; border-right: 1px solid #f0ebf3; font-size: 12px; font-weight: 600; color: var(--ink-2);
+}
+.grade-cabecas .cabeca:last-child { border-right: none; }
+.grade-cabecas .cabeca .nome-equip {
+  min-width: 0; flex: 0 1 auto;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%; display: block;
+}
+
 /* ---------- agenda: grade por equipamento ---------- */
 .grade {
-  background: var(--superficie); border: 1px solid var(--borda);
-  border-radius: var(--r-lg); display: flex;
-  /* Sem `overflow: hidden` aqui de propósito: qualquer ancestral com
-     overflow diferente de `visible` vira o "scroll container" de
-     referência do `position: sticky` dos filhos — e como é a janela
-     (documento) que rola verticalmente, não este elemento, o cabeçalho
-     sticky da coluna (`.grade .cabeca`) pararia de acompanhar o scroll.
-     Custo: os cantos arredondados não recortam o conteúdo internamente
-     (efeito visual mínimo, o fundo já é o mesmo branco). */
+  background: var(--superficie); border: 1px solid var(--borda); border-top: none;
+  border-radius: 0 0 var(--r-lg) var(--r-lg); display: flex;
 }
-.grade .horas { width: 50px; flex: none; border-right: 1px solid #f0ebf3; padding-top: 40px; }
+.grade .horas { width: 50px; flex: none; border-right: 1px solid #f0ebf3; }
 .grade .horas .hora {
   font-size: 11px; font-weight: 500; color: var(--ink-4);
   text-align: right; padding-right: 8px;
@@ -315,21 +358,13 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
   mask-image: linear-gradient(to right, transparent 0, black 12px, black calc(100% - 12px), transparent 100%);
   -webkit-mask-image: linear-gradient(to right, transparent 0, black 12px, black calc(100% - 12px), transparent 100%);
 }
-.grade .coluna { flex: 1 0 46%; min-width: 140px; border-right: 1px solid #f0ebf3; scroll-snap-align: start; }
+/* Largura/flex-basis das colunas fica numa regra combinada com
+   `.grade-cabecas .cabeca` (aqui e nos breakpoints abaixo) — fonte única
+   pras duas linhas nascerem com a mesma largura por item e, assim, o
+   scroll espelhado (JS) alinhar cabeçalho com coluna em qualquer posição. */
+.grade .coluna, .grade-cabecas .cabeca { flex: 1 0 46%; min-width: 140px; }
+.grade .coluna { border-right: 1px solid #f0ebf3; scroll-snap-align: start; }
 .grade .coluna:last-child { border-right: none; }
-.grade .cabeca {
-  height: 40px; display: flex; align-items: center; justify-content: center; gap: 6px;
-  padding: 0 6px; border-bottom: 1px solid #f0ebf3; font-size: 12px; font-weight: 600; color: var(--ink-2);
-  /* Sticky: mantém o nome do equipamento visível ao rolar a pista
-     verticalmente. `top` = altura do `.topbar` fixo (58px no mobile;
-     ajustado para 62px no breakpoint desktop abaixo). */
-  position: sticky; top: 58px; z-index: 10; background: var(--superficie);
-}
-.grade .cabeca .nome-equip {
-  min-width: 0; flex: 0 1 auto;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 100%; display: block;
-}
 .grade .pista { position: relative; }
 .grade .bloco {
   position: absolute; left: 5px; right: 5px; overflow: hidden;
@@ -578,7 +613,7 @@ dialog.modal-cartao[open] {
 }
 .assistente-cabecalho h2 { margin: 0; color: var(--roxo); }
 .assistente-fechar {
-  border: none; background: transparent; font-size: 26px; line-height: 1;
+  border: none; background: transparent; font: inherit; font-size: 26px; line-height: 1;
   color: var(--ink-4); cursor: pointer; padding: 0 4px;
 }
 .assistente-fechar:hover { color: var(--roxo); }
@@ -629,7 +664,7 @@ dialog.modal-cartao[open] {
 .assistente-form input {
   flex: 1; min-height: 42px; padding: 0 12px;
   border: 1px solid var(--borda-forte); border-radius: var(--r-md);
-  font-size: 15px;
+  font-size: 16px; /* 16px evita zoom automático no iOS (mesmo padrão do `.form input`) */
 }
 .assistente-form input:focus {
   outline: none; border-color: var(--roxo); box-shadow: 0 0 0 3px rgba(111,42,134,.12);
@@ -647,18 +682,18 @@ dialog.modal-cartao[open] {
   h1 { font-size: 28px; }
   .item { flex-wrap: nowrap; }
   .item .acoes { flex: none; justify-content: flex-start; padding-top: 0; }
-  .grade .horas { width: 62px; }
+  .grade .horas, .grade-cabecas-espaco { width: 62px; }
   .grade .horas .hora { font-size: 12px; padding-right: 10px; }
   /* No desktop o `.topbar` mede 62px (regra acima), não 58px — ajusta o
-     ponto de referência do cabeçalho sticky da coluna. */
-  .grade .cabeca { top: 62px; }
-  .grade .colunas {
+     ponto de referência da linha de cabeçalhos sticky. */
+  .grade-cabecas { top: 62px; }
+  .grade .colunas, .grade-cabecas-lista {
     overflow: visible;
     /* sem scroll horizontal no desktop (colunas cabem todas), então não
        precisa do indicador de "tem mais conteúdo fora da tela". */
     mask-image: none; -webkit-mask-image: none;
   }
-  .grade .coluna { flex: 1 1 0; min-width: 0; }
+  .grade .coluna, .grade-cabecas .cabeca { flex: 1 1 0; min-width: 0; }
   .grade .bloco { left: 6px; right: 6px; border-radius: 8px; padding: 6px 10px; }
   .grade .bloco.sessao .quem { font-size: 12px; }
   .grade .bloco.sessao .quem2 { font-size: 11px; }
@@ -685,7 +720,7 @@ dialog.modal-cartao[open] {
    equipamento visíveis por vez e KPIs do dia mais compactos. Não altera
    nada do comportamento desktop (regras isoladas neste breakpoint). */
 @media (max-width: 599px) {
-  .grade .coluna { min-width: 115px; }
+  .grade .coluna, .grade-cabecas .cabeca { min-width: 115px; }
   .grade .bloco { padding: 4px 6px; }
   .grade .bloco.sessao .quem { font-size: 10px; }
   /* Linha secundária ("Bia · Eletroestimulação") é a primeira a sair

@@ -10,7 +10,7 @@ class Equipamento(models.Model):
 
     nome = models.CharField(max_length=60, unique=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ATIVO)
-    observacoes = models.TextField(blank=True)
+    observacoes = models.TextField(blank=True, verbose_name="Observações")
 
     class Meta:
         verbose_name = "Equipamento"
@@ -23,7 +23,9 @@ class Equipamento(models.Model):
 
 class TipoSessao(models.Model):
     nome = models.CharField(max_length=80, unique=True)
-    duracao_min = models.PositiveSmallIntegerField(help_text="Duração da sessão em minutos.")
+    duracao_min = models.PositiveSmallIntegerField(
+        verbose_name="Duração (min)", help_text="Duração da sessão em minutos."
+    )
     preparo_min = models.PositiveSmallIntegerField(
         default=0, help_text="Tempo de preparo do equipamento antes da sessão, em minutos."
     )
@@ -78,7 +80,7 @@ class Aluno(models.Model):
     nome = models.CharField(max_length=120)
     telefone = models.CharField(max_length=20, blank=True)
     email = models.EmailField(blank=True)
-    observacoes = models.TextField(blank=True)
+    observacoes = models.TextField(blank=True, verbose_name="Observações")
     ativo = models.BooleanField(default=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
