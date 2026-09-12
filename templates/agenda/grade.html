@@ -18,6 +18,8 @@
     {% if pode_agendar %}<a class="btn btn-sm" href="{% url 'agenda:agendar' %}?data={{ data|date:'Y-m-d' }}">+ Agendar sessão</a>{% endif %}
 </div>
 
+{% include "agenda/_abas_visao.html" with visao="dia" %}
+
 <div class="kpis kpis-dia" style="margin-bottom:12px">
     <div class="kpi"><span class="valor">{{ total_sessoes }}</span><span class="nome">Sessões</span></div>
     <div class="kpi"><span class="valor">{{ alunos_distintos }}</span><span class="nome">Alunos</span></div>

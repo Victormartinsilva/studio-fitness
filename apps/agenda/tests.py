@@ -656,3 +656,105 @@ class PainelEGradeOcupacaoTests(TestCase):
 
         self.assertNotContains(resposta_painel, "Ocupação hoje")
         self.assertNotContains(resposta_painel, "Equipamentos ativos")
+
+
+class NivelDeMovimentoTests(TestCase):
+    """`motor.nivel_de_movimento` — usado tanto na faixa de dias da grade
+    quanto no calendário de mês, por isso mora no motor (não na grade)."""
+
+    def test_vazio_sem_sessoes(self):
+        self.assertEqual(motor.nivel_de_movimento(0), "vazio")
+
+    def test_baixo_dentro_do_limiar(self):
+        self.assertEqual(motor.nivel_de_movimento(1), "baixo")
+        self.assertEqual(motor.nivel_de_movimento(motor.NIVEL_BAIXO_MAX), "baixo")
+
+    def test_medio_dentro_do_limiar(self):
+        self.assertEqual(motor.nivel_de_movimento(motor.NIVEL_BAIXO_MAX + 1), "medio")
+        self.assertEqual(motor.nivel_de_movimento(motor.NIVEL_MEDIO_MAX), "medio")
+
+    def test_alto_acima_do_limiar(self):
+        self.assertEqual(motor.nivel_de_movimento(motor.NIVEL_MEDIO_MAX + 1), "alto")
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class CalendarioMesTests(TestCase):
+    """Visão de mês (`agenda:mes`): grade tradicional 7 colunas x semanas,
+    contagem por dia e navegação entre meses."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45, preparo_min=10, troca_min=10)
+        usuario_gestor = Usuario.objects.create_user(
+            "gestor", password="teste12345", papel=Usuario.Papel.GESTOR
+        )
+        self.gestor = usuario_gestor
+        usuario = Usuario.objects.create_user("bia", password="teste12345", papel=Usuario.Papel.PROFESSOR)
+        self.professor = Professor.objects.create(usuario=usuario)
+        self.professor.tipos_habilitados.add(self.tipo)
+        self.aluno = Aluno.objects.create(nome="Mariana")
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+        self.client.force_login(self.gestor)
+
+    def test_sem_parametro_usa_o_mes_atual(self):
+        hoje = timezone.localdate()
+
+        response = self.client.get(reverse("agenda:mes"))
+
+        self.assertEqual(response.context["mes"], hoje.month)
+        self.assertEqual(response.context["ano"], hoje.year)
+
+    def test_mostra_a_contagem_certa_por_dia(self):
+        hoje = timezone.localdate()
+        dia_no_mes = hoje.replace(day=1) + timedelta(days=10)
+        for hora in (9, 11, 13):
+            inicio = timezone.make_aware(
+                datetime.combine(dia_no_mes, datetime.min.time()) + timedelta(hours=hora)
+            )
+            fim = inicio + timedelta(minutes=self.tipo.duracao_min)
+            servicos.agendar(
+                professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+                equipamento=self.equipamento, inicio=inicio, fim=fim,
+            )
+
+        url = reverse("agenda:mes") + f"?ano={dia_no_mes.year}&mes={dia_no_mes.month}"
+        response = self.client.get(url)
+
+        self.assertContains(response, '<span class="badge-dia">3</span>')
+
+    def test_inclui_dias_do_mes_anterior_e_seguinte_para_completar_a_semana(self):
+        # Setembro de 2026 não começa num domingo nem termina num sábado —
+        # garante dias de agosto/outubro na grade pra completar as semanas.
+        url = reverse("agenda:mes") + "?ano=2026&mes=9"
+        response = self.client.get(url)
+
+        dias = response.context["dias"]
+        self.assertEqual(len(dias) % 7, 0)
+        self.assertTrue(any(not d["no_mes"] for d in dias))
+
+    def test_navegacao_de_dezembro_para_janeiro_vira_o_ano(self):
+        url = reverse("agenda:mes") + "?ano=2026&mes=12"
+        response = self.client.get(url)
+
+        self.assertEqual(response.context["mes_seguinte"], 1)
+        self.assertEqual(response.context["ano_mes_seguinte"], 2027)
+
+    def test_navegacao_de_janeiro_para_dezembro_vira_o_ano(self):
+        url = reverse("agenda:mes") + "?ano=2026&mes=1"
+        response = self.client.get(url)
+
+        self.assertEqual(response.context["mes_anterior"], 12)
+        self.assertEqual(response.context["ano_mes_anterior"], 2025)
+
+    def test_clicar_num_dia_leva_para_a_grade_do_dia_certo(self):
+        response = self.client.get(reverse("agenda:mes"))
+
+        primeiro_dia = response.context["dias"][0]
+        self.assertContains(
+            response,
+            reverse("agenda:grade") + f"?data={primeiro_dia['data'].isoformat()}",
+        )

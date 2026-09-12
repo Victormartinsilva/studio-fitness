@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Agenda — {{ referencia|date:"F \\d\\e Y" }} — Studio Fitness{% endblock %}
+{% block content %}
+<div class="linha-titulo">
+    <h1 style="text-transform:capitalize">{{ referencia|date:"F \\d\\e Y" }}</h1>
+    <a class="btn btn-secundario btn-sm" href="?ano={{ ano_mes_anterior }}&mes={{ mes_anterior }}">‹</a>
+    <a class="btn btn-secundario btn-sm" href="?ano={{ ano_mes_seguinte }}&mes={{ mes_seguinte }}">›</a>
+    <span class="espaco"></span>
+    {% if not eh_mes_atual %}<a class="btn btn-secundario btn-sm" href="{% url 'agenda:mes' %}">Mês atual</a>{% endif %}
+</div>
+
+{% include "agenda/_abas_visao.html" with visao="mes" %}
+
+<div class="kpis" style="margin-bottom:12px">
+    <div class="kpi"><span class="valor">{{ total_mes }}</span><span class="nome">Sessões no mês</span></div>
+</div>
+
+<div class="calendario-mes card">
+    <div class="calendario-mes-semana calendario-mes-cabecalho">
+        <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
+    </div>
+    <div class="calendario-mes-grade">
+        {% for dia in dias %}
+        <a class="dia-mes{% if not dia.no_mes %} fora-do-mes{% endif %}{% if dia.hoje %} hoje{% endif %}"
+           href="{% url 'agenda:grade' %}?data={{ dia.data|date:'Y-m-d' }}#dia-atual">
+            <span class="num">{{ dia.data|date:"j" }}</span>
+            {% if dia.qtd > 0 %}<span class="badge-dia">{{ dia.qtd }}</span>{% endif %}
+            <span class="barra-dia nivel-{{ dia.nivel }}"></span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

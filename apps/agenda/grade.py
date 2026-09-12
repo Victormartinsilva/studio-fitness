@@ -30,25 +30,6 @@ DIAS_DEPOIS_NA_FAIXA = 14  # quantos dias depois do selecionado aparecem na faix
 
 ALTURA_MIN_VAGA_PX = 40  # alvo mínimo de altura visual do bloco "vaga livre" (alvo de toque ~44px)
 
-# Limiares (em quantidade de sessões não canceladas no dia) para o nível de
-# "movimento" mostrado na faixa de dias. São limiares fixos e simples (não
-# derivados da capacidade real de equipamentos/professores) — o objetivo é só
-# dar uma noção visual rápida de dia parado x dia cheio, não uma métrica
-# exata (essa já existe em `resumo_do_dia`, mostrada no cabeçalho do dia
-# selecionado).
-NIVEL_BAIXO_MAX = 4
-NIVEL_MEDIO_MAX = 9
-
-
-def _nivel_de_movimento(qtd):
-    if qtd <= 0:
-        return "vazio"
-    if qtd <= NIVEL_BAIXO_MAX:
-        return "baixo"
-    if qtd <= NIVEL_MEDIO_MAX:
-        return "medio"
-    return "alto"
-
 
 def _minutos(momento, dia):
     """Minuto (clipado à janela do dia) de um datetime dentro da pista do dia."""
@@ -355,7 +336,7 @@ def grade(request):
                 "data": data_dia,
                 "selecionado": data_dia == dia,
                 "qtd": qtd_dia,
-                "nivel": _nivel_de_movimento(qtd_dia),
+                "nivel": motor.nivel_de_movimento(qtd_dia),
             }
         )
 

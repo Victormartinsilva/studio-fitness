@@ -481,6 +481,26 @@ def resumo_do_dia(dia):
     }
 
 
+# Limiares (em quantidade de sessões não canceladas no dia) para o nível de
+# "movimento" mostrado na faixa de dias (grade) e no calendário de mês. São
+# limiares fixos e simples (não derivados da capacidade real de
+# equipamentos/professores) — o objetivo é só dar uma noção visual rápida de
+# dia parado x dia cheio, não uma métrica exata (essa já existe em
+# `resumo_do_dia`, mostrada no cabeçalho do dia selecionado).
+NIVEL_BAIXO_MAX = 4
+NIVEL_MEDIO_MAX = 9
+
+
+def nivel_de_movimento(qtd):
+    if qtd <= 0:
+        return "vazio"
+    if qtd <= NIVEL_BAIXO_MAX:
+        return "baixo"
+    if qtd <= NIVEL_MEDIO_MAX:
+        return "medio"
+    return "alto"
+
+
 def contagem_por_dia(inicio, fim):
     """Quantidade de sessões não canceladas por dia, no intervalo [inicio,
     fim] (datas), agrupando pelo horário real (`inicio`) da sessão já

@@ -358,19 +358,41 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 .kpis-dia .kpi { text-decoration: none; }
 .kpi .valor.valor-sm { font-size: 13px; line-height: 1.3; }
 
-/* ---------- agenda: badge/barra de movimento na faixa de dias ---------- */
-.faixa-dias a .badge-dia {
+/* ---------- agenda: badge/barra de movimento (faixa de dias e calendário
+   de mês) ---------- */
+/* Soltas (não aninhadas sob `.faixa-dias a`) para servirem também dentro de
+   `.dia-mes`, no calendário de mês — mesma regra de cor por nível nos dois
+   lugares, sem duplicar. */
+.badge-dia {
   font-size: 9px; font-weight: 700; color: var(--roxo); background: var(--roxo-claro);
   border-radius: 999px; padding: 1px 5px; margin-top: 2px;
 }
-.faixa-dias a.hoje .badge-dia { background: rgba(255,255,255,.25); color: #fff; }
-.faixa-dias a .barra-dia { display: block; width: 18px; height: 3px; border-radius: 2px; margin-top: 3px; background: transparent; }
-.faixa-dias a .barra-dia.nivel-baixo { background: var(--verde); }
-.faixa-dias a .barra-dia.nivel-medio { background: var(--ambar); }
-.faixa-dias a .barra-dia.nivel-alto { background: var(--roxo); }
+.faixa-dias a.hoje .badge-dia,
+.dia-mes.hoje .badge-dia { background: rgba(255,255,255,.25); color: #fff; }
+.barra-dia { display: block; width: 18px; height: 3px; border-radius: 2px; margin-top: 3px; background: transparent; }
+.barra-dia.nivel-baixo { background: var(--verde); }
+.barra-dia.nivel-medio { background: var(--ambar); }
+.barra-dia.nivel-alto { background: var(--roxo); }
 .faixa-dias a.hoje .barra-dia.nivel-baixo,
 .faixa-dias a.hoje .barra-dia.nivel-medio,
-.faixa-dias a.hoje .barra-dia.nivel-alto { background: #fff; }
+.faixa-dias a.hoje .barra-dia.nivel-alto,
+.dia-mes.hoje .barra-dia.nivel-baixo,
+.dia-mes.hoje .barra-dia.nivel-medio,
+.dia-mes.hoje .barra-dia.nivel-alto { background: #fff; }
+
+/* ---------- agenda: calendário mensal ---------- */
+.calendario-mes-semana, .calendario-mes-grade { display: grid; grid-template-columns: repeat(7, 1fr); }
+.calendario-mes-cabecalho { font-size: 11px; font-weight: 600; color: var(--ink-4); text-align: center; padding: 4px 0 8px; }
+.calendario-mes-grade { gap: 1px; background: var(--borda); border: 1px solid var(--borda); border-radius: var(--r-md); overflow: hidden; }
+.dia-mes {
+  background: var(--superficie); color: var(--ink); min-height: 58px; padding: 4px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+}
+.dia-mes .num { font-family: "Outfit", sans-serif; font-weight: 600; font-size: 13px; }
+.dia-mes.fora-do-mes { background: var(--fundo); color: var(--ink-4); }
+.dia-mes.fora-do-mes .num { color: var(--ink-4); }
+.dia-mes.hoje { background: var(--roxo); color: #fff; }
+.dia-mes.hoje .num { color: #fff; }
 
 /* ---------- agenda: linha de professores do dia ---------- */
 .linha-professores { margin-bottom: 12px; }
@@ -603,6 +625,7 @@ dialog.modal-cartao[open] {
   .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .kpi .valor { font-size: 26px; }
   .kpi .nome { font-size: 12px; }
+  .dia-mes { min-height: 84px; padding: 8px; }
   .painel-colunas { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 20px; align-items: start; }
   .form-2col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
   .login { margin-top: 12vh; }
