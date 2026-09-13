@@ -21,7 +21,7 @@ from django.core.exceptions import ValidationError
 from django.core import signing
 from django.http import Http404, JsonResponse
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from apps.agenda import motor, servicos
 from apps.agenda.models import Sessao
@@ -43,6 +43,16 @@ def _corpo_json(request):
         return json.loads(request.body.decode("utf-8") or "{}")
     except (ValueError, UnicodeDecodeError):
         return {}
+
+
+@require_GET
+@login_required
+def historico(request):
+    """Últimas mensagens da conversa (guardadas em `request.session` por
+    `conversa.processar_mensagem`) — usado pelo JS pra repopular o chat
+    quando o painel é reaberto depois de navegar pra outra página."""
+    _exigir_assistente_ativo()
+    return JsonResponse({"mensagens": request.session.get(conversa.SESSION_KEY_HISTORICO, [])})
 
 
 @require_POST

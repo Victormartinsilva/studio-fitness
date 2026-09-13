@@ -466,6 +466,50 @@ class AssistenteTestCase(TestCase):
         self.assertEqual(resposta.status_code, 404)
 
 
+# -- histórico da conversa (Etapa 4.2 — reabrir o chat após navegar) --------
+
+
+@override_settings(ASSISTENTE_ATIVO=True)
+class AssistenteHistoricoTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.usuario = Usuario.objects.create_user(
+            "bia", password="demo1234", papel=Usuario.Papel.PROFESSOR
+        )
+
+    def test_historico_vazio_quando_nenhuma_mensagem_foi_trocada(self):
+        self.client.login(username="bia", password="demo1234")
+        resposta = self.client.get(reverse("assistente:historico"))
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.json(), {"mensagens": []})
+
+    @mock.patch("apps.assistente.conversa.llm.chamar")
+    def test_historico_reflete_as_mensagens_trocadas_na_sessao(self, mock_chamar):
+        mock_chamar.return_value = _mensagem_llm(texto="Oi, como posso ajudar?")
+        self.client.login(username="bia", password="demo1234")
+        self.client.post(
+            reverse("assistente:mensagem"),
+            data=json.dumps({"mensagem": "oi"}),
+            content_type="application/json",
+        )
+
+        resposta = self.client.get(reverse("assistente:historico"))
+        self.assertEqual(resposta.status_code, 200)
+        mensagens = resposta.json()["mensagens"]
+        self.assertEqual(mensagens[0], {"role": "user", "content": "oi"})
+        self.assertEqual(mensagens[1], {"role": "assistant", "content": "Oi, como posso ajudar?"})
+
+    def test_exige_login(self):
+        resposta = self.client.get(reverse("assistente:historico"))
+        self.assertEqual(resposta.status_code, 302)
+
+    @override_settings(ASSISTENTE_ATIVO=False)
+    def test_rota_indisponivel_quando_assistente_desativado(self):
+        self.client.login(username="bia", password="demo1234")
+        resposta = self.client.get(reverse("assistente:historico"))
+        self.assertEqual(resposta.status_code, 404)
+
+
 # -- context processor / botão flutuante (Etapa 3b — frontend) -------------
 
 

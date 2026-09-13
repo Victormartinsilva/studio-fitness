@@ -51,15 +51,57 @@
       return;
     }
 
+    // Altura do painel no mobile: `100dvh` (CSS) já cobre a maior parte dos
+    // casos, mas o Safari iOS às vezes não reduz a viewport dinâmica quando
+    // o teclado abre — corrige na mão com `visualViewport.resize`. No
+    // desktop o painel tem posição/tamanho fixos (CSS, `@media min-width:
+    // 900px`), então só ajusta abaixo do breakpoint.
+    function ajustarAlturaPainel() {
+      if (!window.visualViewport) {
+        return;
+      }
+      const mobile = window.matchMedia("(max-width: 899px)").matches;
+      painel.style.height = mobile && !painel.hidden ? window.visualViewport.height + "px" : "";
+    }
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", ajustarAlturaPainel);
+    }
+
+    // Histórico da sessão (guardado no backend por `conversa.py`) só é
+    // buscado uma vez por carregamento de página, na primeira vez que o
+    // painel abre — assim, ao navegar pra outra página e reabrir o chat, as
+    // últimas mensagens reaparecem em vez do painel começar vazio de novo.
+    let historicoCarregado = false;
+    function carregarHistorico() {
+      if (historicoCarregado) {
+        return;
+      }
+      historicoCarregado = true;
+      fetch("/assistente/historico")
+        .then(function (resposta) {
+          return resposta.json();
+        })
+        .then(function (dados) {
+          (dados.mensagens || []).forEach(function (msg) {
+            adicionarMensagem(msg.content, msg.role === "user" ? "usuario" : "assistente");
+          });
+        })
+        .catch(function () {});
+    }
+
     function abrirPainel() {
       painel.hidden = false;
       botao.setAttribute("aria-expanded", "true");
+      carregarHistorico();
+      ajustarAlturaPainel();
       input.focus();
     }
 
     function fecharPainel() {
       painel.hidden = true;
       botao.setAttribute("aria-expanded", "false");
+      painel.style.height = "";
     }
 
     botao.addEventListener("click", function () {
@@ -74,10 +116,11 @@
       fechar.addEventListener("click", fecharPainel);
     }
 
+    // Chip de sugestão manda a mensagem direto (sem exigir mais um toque em
+    // "Enviar" depois de preencher o campo).
     chips.forEach(function (chip) {
       chip.addEventListener("click", function () {
-        input.value = chip.textContent.trim();
-        input.focus();
+        enviarMensagem(chip.textContent.trim());
       });
     });
 
@@ -153,9 +196,8 @@
       input.disabled = carregando;
     }
 
-    form.addEventListener("submit", function (evento) {
-      evento.preventDefault();
-      const texto = input.value.trim();
+    function enviarMensagem(texto) {
+      texto = (texto || "").trim();
       if (!texto) {
         return;
       }
@@ -183,6 +225,11 @@
           definirCarregando(false);
           input.focus();
         });
+    }
+
+    form.addEventListener("submit", function (evento) {
+      evento.preventDefault();
+      enviarMensagem(input.value);
     });
   });
 })();
