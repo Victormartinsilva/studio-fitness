@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from unittest import mock
 
 from django.core.exceptions import ValidationError
 from django.test import TestCase, override_settings
@@ -1563,6 +1564,96 @@ class RemararViewTests(TestCase):
         self.assertContains(response, "já tem outra sessão")
         sessao_no_banco = Sessao.objects.get(pk=self.sessao.pk)
         self.assertEqual(sessao_no_banco.inicio, self.inicio)
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class MinhasSessoesAgrupamentoTests(TestCase):
+    """Etapa 4.5: "Minhas sessões" mostra a partir de hoje, agrupado por dia
+    ("Hoje", "Amanhã", "Seg 14/09"), com uma aba "Anteriores" paginada onde
+    sessões já ocorridas não têm mais botão "Cancelar"."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45)
+        usuario_prof = Usuario.objects.create_user(
+            "biaM", password="teste12345", papel=Usuario.Papel.PROFESSOR
+        )
+        self.professor = Professor.objects.create(usuario=usuario_prof)
+        self.professor.tipos_habilitados.add(self.tipo)
+        self.aluno = Aluno.objects.create(nome="Mariana")
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+        self.url = reverse("agenda:minhas_sessoes")
+
+        hoje = timezone.localdate()
+
+        def _sessao(dia, hora):
+            inicio = timezone.make_aware(datetime.combine(dia, datetime.min.time()) + timedelta(hours=hora))
+            return servicos.agendar(
+                professor=self.professor,
+                aluno=self.aluno,
+                tipo=self.tipo,
+                equipamento=self.equipamento,
+                inicio=inicio,
+                fim=inicio + timedelta(minutes=self.tipo.duracao_min),
+            )
+
+        self.sessao_semana_passada = _sessao(hoje - timedelta(days=7), 9)
+        self.sessao_ontem = _sessao(hoje - timedelta(days=1), 9)
+        self.sessao_hoje = _sessao(hoje, 18)
+        self.sessao_amanha = _sessao(hoje + timedelta(days=1), 9)
+
+    def test_proximas_nao_lista_sessoes_passadas(self):
+        self.client.force_login(self.professor.usuario)
+        response = self.client.get(self.url)
+
+        todas = [sessao for grupo in response.context["grupos"] for sessao in grupo["sessoes"]]
+        self.assertEqual(todas, [self.sessao_hoje, self.sessao_amanha])
+
+    def test_proximas_agrupa_por_dia_com_rotulo_hoje_e_amanha(self):
+        self.client.force_login(self.professor.usuario)
+        response = self.client.get(self.url)
+
+        rotulos = [grupo["rotulo"] for grupo in response.context["grupos"]]
+        self.assertEqual(rotulos, ["Hoje", "Amanhã"])
+
+    def test_proximas_mostra_botao_cancelar(self):
+        self.client.force_login(self.professor.usuario)
+        response = self.client.get(self.url)
+        self.assertContains(response, reverse("agenda:cancelar", args=[self.sessao_hoje.pk]))
+
+    def test_anteriores_lista_so_passadas_mais_recente_primeiro(self):
+        self.client.force_login(self.professor.usuario)
+        response = self.client.get(self.url, {"lista": "anteriores"})
+
+        todas = [sessao for grupo in response.context["grupos"] for sessao in grupo["sessoes"]]
+        self.assertEqual(todas, [self.sessao_ontem, self.sessao_semana_passada])
+
+    def test_anteriores_nao_mostra_botao_cancelar(self):
+        self.client.force_login(self.professor.usuario)
+        response = self.client.get(self.url, {"lista": "anteriores"})
+        self.assertNotContains(response, "Cancelar")
+
+    def test_anteriores_e_paginada(self):
+        with mock.patch("apps.agenda.views._SESSOES_ANTERIORES_POR_PAGINA", 1):
+            self.client.force_login(self.professor.usuario)
+
+            primeira = self.client.get(self.url, {"lista": "anteriores"})
+            pagina = primeira.context["pagina"]
+            self.assertEqual(pagina.paginator.num_pages, 2)
+            self.assertTrue(pagina.has_next())
+            self.assertEqual(
+                [s for grupo in primeira.context["grupos"] for s in grupo["sessoes"]], [self.sessao_ontem]
+            )
+
+            segunda = self.client.get(self.url, {"lista": "anteriores", "pagina": 2})
+            self.assertEqual(
+                [s for grupo in segunda.context["grupos"] for s in grupo["sessoes"]],
+                [self.sessao_semana_passada],
+            )
 
 
 @override_settings(

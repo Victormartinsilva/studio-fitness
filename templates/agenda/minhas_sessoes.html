@@ -8,11 +8,18 @@
     {% if pode_agendar %}<a class="btn btn-sm" href="{% url 'agenda:agendar' %}">+ Agendar</a>{% endif %}
 </div>
 
-<div class="lista">
-    {% for sessao in sessoes %}
+<div class="abas" style="max-width:320px;margin-bottom:16px">
+    <a href="{% url 'agenda:minhas_sessoes' %}" class="{% if aba_lista == 'proximas' %}ativo{% endif %}">Próximas</a>
+    <a href="{% url 'agenda:minhas_sessoes' %}?lista=anteriores" class="{% if aba_lista == 'anteriores' %}ativo{% endif %}">Anteriores</a>
+</div>
+
+{% for grupo in grupos %}
+<h2 class="rotulo" style="margin:{% if not forloop.first %}20px 0 8px{% else %}0 0 8px{% endif %}">{{ grupo.rotulo }}</h2>
+<div class="lista" style="margin-bottom:4px">
+    {% for sessao in grupo.sessoes %}
     <div class="item">
         <div class="corpo">
-            <span class="titulo">{{ sessao.inicio|date:"d/m" }} · {{ sessao.inicio|date:"H:i" }} – {{ sessao.fim|date:"H:i" }} · {{ sessao.aluno }}</span>
+            <span class="titulo">{{ sessao.inicio|date:"H:i" }} – {{ sessao.fim|date:"H:i" }} · {{ sessao.aluno }}</span>
             <span class="meta">{{ sessao.professor }} · {{ sessao.tipo }}{% if sessao.equipamento %} · {{ sessao.equipamento }}{% endif %}</span>
             {% if sessao.equipamento %}
             <span class="meta">Equipamento reservado {{ sessao.reserva_inicio|date:"H:i" }} – {{ sessao.reserva_fim|date:"H:i" }}</span>
@@ -20,7 +27,7 @@
         </div>
         <div class="acoes">
             <span class="tag {% if sessao.status == 'confirmada' or sessao.status == 'realizada' %}ok{% elif sessao.status == 'faltou' %}aviso{% endif %}">{{ sessao.get_status_display }}</span>
-            {% if pode_agendar %}
+            {% if pode_cancelar %}
             <form method="post" action="{% url 'agenda:cancelar' sessao.pk %}" onsubmit="return confirm('Cancelar esta sessão?');">
                 {% csrf_token %}
                 <button type="submit" class="btn-perigo">Cancelar</button>
@@ -28,8 +35,23 @@
             {% endif %}
         </div>
     </div>
-    {% empty %}
-    <div class="card vazio">Nenhuma sessão agendada.</div>
     {% endfor %}
 </div>
+{% empty %}
+<div class="card vazio">
+    {% if aba_lista == 'anteriores' %}Nenhuma sessão anterior.{% else %}Nenhuma sessão agendada a partir de hoje.{% endif %}
+</div>
+{% endfor %}
+
+{% if pagina and pagina.paginator.num_pages > 1 %}
+<div class="acoes-form" style="justify-content:center;margin-top:16px">
+    {% if pagina.has_previous %}
+    <a class="btn btn-secundario btn-sm" href="?lista=anteriores&pagina={{ pagina.previous_page_number }}">‹ Mais recentes</a>
+    {% endif %}
+    <span class="sub">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+    {% if pagina.has_next %}
+    <a class="btn btn-secundario btn-sm" href="?lista=anteriores&pagina={{ pagina.next_page_number }}">Mais antigas ›</a>
+    {% endif %}
+</div>
+{% endif %}
 {% endblock %}

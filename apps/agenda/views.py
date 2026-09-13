@@ -1,8 +1,9 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -17,23 +18,70 @@ from .forms import AgendarForm, RemararForm
 from .models import Sessao
 from .permissoes import _digitos, _pode_gerenciar_sessao
 
+_SESSOES_ANTERIORES_POR_PAGINA = 20
+_DIAS_SEMANA_ABREV = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
+
+
+def _rotulo_dia(dia, hoje):
+    delta = (dia - hoje).days
+    if delta == 0:
+        return "Hoje"
+    if delta == 1:
+        return "Amanhã"
+    if delta == -1:
+        return "Ontem"
+    return f"{_DIAS_SEMANA_ABREV[dia.weekday()]} {dia:%d/%m}"
+
+
+def _agrupar_por_dia(sessoes, hoje):
+    """Agrupa sessões (já ordenadas por `inicio`, crescente ou decrescente)
+    em blocos consecutivos do mesmo dia — funciona nos dois sentidos porque
+    só olha se o dia mudou em relação ao item anterior, nunca reordena."""
+    grupos = []
+    grupo_atual = None
+    for sessao in sessoes:
+        dia = timezone.localtime(sessao.inicio).date()
+        if grupo_atual is None or grupo_atual["data"] != dia:
+            grupo_atual = {"data": dia, "rotulo": _rotulo_dia(dia, hoje), "sessoes": []}
+            grupos.append(grupo_atual)
+        grupo_atual["sessoes"].append(sessao)
+    return grupos
+
 
 @login_required
 def minhas_sessoes(request):
     usuario = request.user
-    sessoes = Sessao.objects.exclude(status=Sessao.Status.CANCELADA)
+    sessoes = Sessao.objects.exclude(status=Sessao.Status.CANCELADA).select_related(
+        "professor__usuario", "aluno", "equipamento"
+    )
 
     if usuario.is_professor and hasattr(usuario, "professor"):
         sessoes = sessoes.filter(professor=usuario.professor)
     elif usuario.is_aluno and hasattr(usuario, "aluno"):
         sessoes = sessoes.filter(aluno=usuario.aluno)
 
+    hoje = timezone.localdate()
+    inicio_hoje = timezone.make_aware(datetime.combine(hoje, time.min))
+
+    aba_lista = "anteriores" if request.GET.get("lista") == "anteriores" else "proximas"
+    pagina = None
+    if aba_lista == "anteriores":
+        queryset = sessoes.filter(inicio__lt=inicio_hoje).order_by("-inicio")
+        paginator = Paginator(queryset, _SESSOES_ANTERIORES_POR_PAGINA)
+        pagina = paginator.get_page(request.GET.get("pagina"))
+        sessoes_da_pagina = pagina.object_list
+    else:
+        sessoes_da_pagina = sessoes.filter(inicio__gte=inicio_hoje).order_by("inicio")
+
     pode_agendar = usuario.is_superuser or usuario.is_gestor or usuario.is_professor
     return render(
         request,
         "agenda/minhas_sessoes.html",
         {
-            "sessoes": sessoes.select_related("professor__usuario", "aluno", "equipamento"),
+            "grupos": _agrupar_por_dia(sessoes_da_pagina, hoje),
+            "aba_lista": aba_lista,
+            "pagina": pagina,
+            "pode_cancelar": pode_agendar and aba_lista == "proximas",
             "pode_agendar": pode_agendar,
             "aba": "minhas_sessoes",
         },
