@@ -1629,6 +1629,131 @@ class AgendarViewTests(TestCase):
         self.assertTrue(Sessao.objects.filter(aluno=self.aluno, professor=self.professor_bia).exists())
 
 
+class VagasJsonViewTests(TestCase):
+    """Etapa 3b: `agenda:vagas_json` — endpoint usado pelo fetch do
+    formulário de agendar para mostrar horários livres já no carregamento
+    (view fina: só valida os parâmetros e delega pro `motor.buscar_vagas`,
+    sem duplicar regra de disponibilidade nenhuma)."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45, preparo_min=10, troca_min=10)
+        usuario_bia = Usuario.objects.create_user("biaVJ", password="teste12345", papel=Usuario.Papel.PROFESSOR)
+        self.professor = Professor.objects.create(usuario=usuario_bia)
+        self.professor.tipos_habilitados.add(self.tipo)
+        self.gestor = Usuario.objects.create_user("gestorVJ", password="teste12345", papel=Usuario.Papel.GESTOR)
+        self.usuario_aluno = Usuario.objects.create_user(
+            "alunoVJ", password="teste12345", papel=Usuario.Papel.ALUNO
+        )
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+        self.dia = timezone.localdate() + timedelta(days=1)
+        self.url = reverse("agenda:vagas_json")
+
+    def test_devolve_mesmas_vagas_que_motor_buscar_vagas(self):
+        self.client.force_login(self.gestor)
+
+        response = self.client.get(self.url, {"tipo": self.tipo.id, "data": self.dia.isoformat()})
+
+        self.assertEqual(response.status_code, 200)
+        esperado = motor.buscar_vagas(tipo_sessao=self.tipo, dia=self.dia, limite=8)
+        dados = response.json()
+        self.assertEqual(len(dados["vagas"]), len(esperado))
+        for vaga_json, vaga_motor in zip(dados["vagas"], esperado):
+            self.assertEqual(vaga_json["professor_id"], vaga_motor["professor"].pk)
+            self.assertEqual(vaga_json["professor_nome"], str(vaga_motor["professor"]))
+            self.assertEqual(
+                vaga_json["equipamento_id"],
+                vaga_motor["equipamento"].pk if vaga_motor["equipamento"] else None,
+            )
+            self.assertEqual(vaga_json["inicio"], timezone.localtime(vaga_motor["inicio"]).strftime("%H:%M"))
+            self.assertEqual(vaga_json["fim"], timezone.localtime(vaga_motor["fim"]).strftime("%H:%M"))
+
+    def test_parametros_opcionais_professor_equipamento_periodo(self):
+        self.client.force_login(self.professor.usuario)
+
+        response = self.client.get(
+            self.url,
+            {
+                "tipo": self.tipo.id,
+                "data": self.dia.isoformat(),
+                "professor": self.professor.id,
+                "equipamento": self.equipamento.id,
+                "periodo": "tarde",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        esperado = motor.buscar_vagas(
+            tipo_sessao=self.tipo, dia=self.dia, professor=self.professor,
+            equipamento=self.equipamento, periodo="tarde", limite=8,
+        )
+        dados = response.json()
+        self.assertEqual(len(dados["vagas"]), len(esperado))
+
+    def test_recusa_parametros_ausentes_ou_invalidos_com_400(self):
+        self.client.force_login(self.gestor)
+
+        sem_tipo = self.client.get(self.url, {"data": self.dia.isoformat()})
+        self.assertEqual(sem_tipo.status_code, 400)
+
+        sem_data = self.client.get(self.url, {"tipo": self.tipo.id})
+        self.assertEqual(sem_data.status_code, 400)
+
+        tipo_invalido = self.client.get(self.url, {"tipo": "abc", "data": self.dia.isoformat()})
+        self.assertEqual(tipo_invalido.status_code, 400)
+
+        data_invalida = self.client.get(self.url, {"tipo": self.tipo.id, "data": "31/12/2026"})
+        self.assertEqual(data_invalida.status_code, 400)
+
+        periodo_invalido = self.client.get(
+            self.url, {"tipo": self.tipo.id, "data": self.dia.isoformat(), "periodo": "madrugada"}
+        )
+        self.assertEqual(periodo_invalido.status_code, 400)
+
+    def test_aluno_recebe_403(self):
+        self.client.force_login(self.usuario_aluno)
+
+        response = self.client.get(self.url, {"tipo": self.tipo.id, "data": self.dia.isoformat()})
+
+        self.assertEqual(response.status_code, 403)
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class AgendarPassosTemplateTests(TestCase):
+    """Etapa 3b: os 4 blocos de passo (`fieldset.passo-agendar`) continuam
+    presentes no HTML mesmo sem JS (`self.client` nunca executa JS) — é o
+    requisito do fallback: o formulário continua sendo uma página só, com
+    todos os campos reais visíveis."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45)
+        usuario_bia = Usuario.objects.create_user(
+            "biaPasso", password="teste12345", papel=Usuario.Papel.PROFESSOR
+        )
+        self.professor = Professor.objects.create(usuario=usuario_bia)
+        self.professor.tipos_habilitados.add(self.tipo)
+        Aluno.objects.create(nome="Mariana")
+        self.url = reverse("agenda:agendar")
+
+    def test_os_quatro_passos_e_campos_de_fallback_aparecem_no_html(self):
+        self.client.force_login(self.professor.usuario)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        for numero in ("1", "2", "3", "4"):
+            self.assertContains(response, f'data-passo="{numero}"')
+        self.assertContains(response, 'id="id_professor"')
+        self.assertContains(response, 'id="id_hora_inicio"')
+        self.assertContains(response, 'id="id_equipamento"')
+        self.assertContains(response, 'id="horarios-disponiveis"')
+        self.assertContains(response, 'id="periodo-chips"')
+
+
 @override_settings(
     STORAGES={
         "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},

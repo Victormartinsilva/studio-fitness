@@ -11,6 +11,7 @@ urlpatterns = [
     path("mes/", calendario.mes, name="mes"),
     path("ano/", calendario.ano, name="ano"),
     path("agendar/", views.agendar, name="agendar"),
+    path("vagas.json", views.vagas_json, name="vagas_json"),
     path("<int:pk>/cancelar/", views.cancelar, name="cancelar"),
     path("<int:pk>/status/", views.status, name="status"),
     path("<int:pk>/remarcar/", views.remarcar, name="remarcar"),

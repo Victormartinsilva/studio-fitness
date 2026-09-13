@@ -8,7 +8,7 @@
 </div>
 
 <div class="card" style="max-width:560px">
-    <form method="post" class="form">
+    <form method="post" class="form" id="form-agendar">
         {% csrf_token %}
         {% if form.non_field_errors %}
         <div class="alerta critico" style="margin-bottom:12px">
@@ -16,8 +16,19 @@
             <span class="detalhe">Escolha outro horário, equipamento ou professor.</span>
         </div>
         {% endif %}
-        <p>{{ form.tipo.label_tag }}{{ form.tipo }}{% if form.tipo.errors %}{{ form.tipo.errors }}{% endif %}</p>
-        <div class="form-2col">
+
+        <!-- Indicador de passo + "Voltar": só aparece quando o JS reorganiza
+             os fieldsets abaixo em um fluxo. Sem JS fica escondido (não faz
+             sentido "Passo X de 4" com tudo visível de uma vez) e todos os
+             fieldsets abaixo continuam visíveis — é o comportamento padrão
+             do HTML, o JS é que ESCONDE quando roda. -->
+        <div class="passos-cabecalho" id="passos-cabecalho" hidden>
+            <button type="button" class="btn btn-secundario btn-sm" id="passo-voltar" hidden>‹ Voltar</button>
+            <span class="passos-indicador" id="passos-indicador"></span>
+        </div>
+
+        <fieldset class="passo-agendar" data-passo="1">
+            <legend>1. Aluno</legend>
             <p>
                 <label for="busca-aluno">Aluno</label>
                 <input type="text" id="busca-aluno" list="lista-alunos" placeholder="Digite o nome do aluno" autocomplete="off" required>
@@ -29,13 +40,55 @@
                 {{ form.aluno }}
                 {{ form.aluno.errors }}
             </p>
-            <p>{{ form.professor.label_tag }}{{ form.professor }}{{ form.professor.errors }}</p>
+            <div class="acoes-form passo-nav">
+                <button type="button" class="btn btn-sm passo-proximo">Próximo ›</button>
+            </div>
+        </fieldset>
+
+        <fieldset class="passo-agendar" data-passo="2">
+            <legend>2. Tipo de sessão</legend>
+            <p>{{ form.tipo.label_tag }}{{ form.tipo }}{% if form.tipo.errors %}{{ form.tipo.errors }}{% endif %}</p>
+            <div class="acoes-form passo-nav">
+                <button type="button" class="btn btn-sm passo-proximo">Próximo ›</button>
+            </div>
+        </fieldset>
+
+        <fieldset class="passo-agendar" data-passo="3">
+            <legend>3. Dia e horário</legend>
             <p>{{ form.data.label_tag }}{{ form.data }}{{ form.data.errors }}</p>
-            <p>{{ form.hora_inicio.label_tag }}{{ form.hora_inicio }}{{ form.hora_inicio.errors }}</p>
-        </div>
-        <p>{{ form.equipamento.label_tag }}{{ form.equipamento }}{{ form.equipamento.errors }}</p>
-        <p class="sub" style="margin:0 0 12px">O equipamento fica reservado além do horário da sessão: o preparo entra antes e a troca depois, conforme o tipo de sessão.</p>
-        <div class="acoes-form">
+
+            <!-- Filtro de período: só ajusta o parâmetro `periodo` do fetch
+                 abaixo, não é campo do form (nada é enviado no POST). -->
+            <div class="chips" id="periodo-chips">
+                <button type="button" class="chip" data-periodo="manha">Manhã</button>
+                <button type="button" class="chip" data-periodo="tarde">Tarde</button>
+                <button type="button" class="chip" data-periodo="noite">Noite</button>
+            </div>
+
+            <div id="horarios-disponiveis" class="sugestoes-horario" aria-live="polite"></div>
+
+            <!-- Campos reais (fallback sem JS): continuam aqui, sempre
+                 visíveis quando JS está desligado. Só o JS os esconde
+                 visualmente depois de confirmar que está ativo — um chip de
+                 horário clicado acima preenche os três de uma vez. -->
+            <div class="campos-fallback">
+                <p>{{ form.professor.label_tag }}{{ form.professor }}{{ form.professor.errors }}</p>
+                <p>{{ form.hora_inicio.label_tag }}{{ form.hora_inicio }}{{ form.hora_inicio.errors }}</p>
+                <p>{{ form.equipamento.label_tag }}{{ form.equipamento }}{{ form.equipamento.errors }}</p>
+                <p class="sub" style="margin:0 0 12px">O equipamento fica reservado além do horário da sessão: o preparo entra antes e a troca depois, conforme o tipo de sessão.</p>
+            </div>
+
+            <div class="acoes-form passo-nav">
+                <button type="button" class="btn btn-sm passo-proximo">Próximo ›</button>
+            </div>
+        </fieldset>
+
+        <fieldset class="passo-agendar" data-passo="4">
+            <legend>4. Confirmar</legend>
+            <div class="resumo-confirmar" id="resumo-confirmar"></div>
+        </fieldset>
+
+        <div class="acoes-form acoes-confirmar">
             <button type="submit" class="btn">Agendar</button>
             <a class="btn btn-secundario" href="{% url 'agenda:minhas_sessoes' %}">Cancelar</a>
         </div>

@@ -175,6 +175,41 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 .form ul.errorlist { margin: 0; padding: 0; list-style: none; color: var(--vermelho); font-size: 13px; }
 .acoes-form { display: flex; align-items: center; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
 
+/* ---------- passos do formulário de agendar (Etapa 3b) ---------- */
+/* Sem JS, todo `fieldset.passo-agendar` fica visível (comportamento padrão
+   do HTML) — só o reset visual abaixo (sem borda/padding de fieldset) evita
+   que pareçam "caixas" separadas; o formulário continua sendo UM `<form>`
+   só. Com JS (`agenda.js`), cada um vira um "passo" escondido/mostrado via
+   `hidden`. */
+.passo-agendar { border: 0; padding: 0; margin: 0 0 18px; }
+.passo-agendar legend {
+  font-family: "Outfit", sans-serif; font-weight: 700; font-size: 14px;
+  color: var(--roxo); padding: 0; margin: 0 0 10px; width: 100%;
+}
+.passos-cabecalho { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.passos-indicador { font-size: 12px; font-weight: 600; color: var(--ink-3); }
+.passo-nav { justify-content: flex-end; }
+.resumo-confirmar { display: flex; flex-direction: column; gap: 6px; }
+.resumo-linha { margin: 0; font-size: 14px; }
+.resumo-linha strong { color: var(--ink-3); font-weight: 600; }
+
+/* Botão "Agendar" sempre alcançável, mesmo com o teclado virtual aberto:
+   `position: sticky` (não `fixed`) dentro do scroll normal da página,
+   parado logo acima da barra de abas fixa (`nav.tabs`) — mesma folga
+   (`78px` = padding-bottom padrão de `main`) e o mesmo
+   `env(safe-area-inset-bottom)` já usado em `.assistente-form`. `fixed`
+   direto na viewport se comporta mal com o teclado no iOS; `sticky` dentro
+   do fluxo normal do documento não tem esse problema. */
+.acoes-confirmar {
+  position: sticky; bottom: calc(78px + env(safe-area-inset-bottom));
+  background: var(--superficie); margin: 16px -14px -14px; padding: 12px 14px;
+  border-top: 1px solid var(--borda); z-index: 5;
+}
+/* `<button class="sugestao-item">` (chips de horário do fetch, Etapa 3b)
+   precisa do mesmo reset de fonte que `.chip` já usa — botão não herda
+   `font-family` do body por padrão. */
+button.sugestao-item { font: inherit; cursor: pointer; }
+
 /* ---------- mensagens e alertas ---------- */
 .messages { list-style: none; padding: 0; margin: 0 0 14px; display: flex; flex-direction: column; gap: 8px; }
 .messages li {

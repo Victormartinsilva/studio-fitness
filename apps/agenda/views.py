@@ -1,14 +1,15 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from apps.cadastros.models import Aluno
+from apps.cadastros.models import Aluno, Equipamento, Professor, TipoSessao
 
 from . import motor, servicos
 from .forms import AgendarForm, RemararForm
@@ -130,6 +131,73 @@ def _sugestoes_para_template(*, professor, tipo, dia, hora_desejada, equipamento
             }
         )
     return sugestoes
+
+
+_PERIODOS_VALIDOS = ("manha", "tarde", "noite")
+
+
+@login_required
+def vagas_json(request):
+    """Endpoint JSON para o formulário de agendar (Etapa 3b, progressive
+    enhancement via fetch): mesmos horários livres que `motor.buscar_vagas`
+    devolveria para os parâmetros pedidos, em `HH:MM`. View fina — só
+    valida os parâmetros de query e delega pro motor, sem duplicar
+    nenhuma regra de disponibilidade."""
+    if not (request.user.is_superuser or request.user.is_gestor or request.user.is_professor):
+        return JsonResponse({"erro": "Você não pode consultar horários."}, status=403)
+
+    tipo_id = request.GET.get("tipo")
+    data_str = request.GET.get("data")
+    professor_id = request.GET.get("professor")
+    equipamento_id = request.GET.get("equipamento")
+    periodo = request.GET.get("periodo") or None
+
+    try:
+        tipo = TipoSessao.objects.get(pk=tipo_id, ativo=True)
+    except (TipoSessao.DoesNotExist, ValueError, TypeError):
+        return JsonResponse({"erro": "Tipo de sessão inválido ou não informado."}, status=400)
+
+    try:
+        dia = date.fromisoformat(data_str)
+    except (TypeError, ValueError):
+        return JsonResponse({"erro": "Data inválida. Use o formato AAAA-MM-DD."}, status=400)
+
+    professor = None
+    if professor_id:
+        try:
+            professor = Professor.objects.get(pk=professor_id, ativo=True)
+        except (Professor.DoesNotExist, ValueError, TypeError):
+            return JsonResponse({"erro": "Professor inválido."}, status=400)
+
+    equipamento = None
+    if equipamento_id:
+        try:
+            equipamento = Equipamento.objects.get(pk=equipamento_id, status=Equipamento.Status.ATIVO)
+        except (Equipamento.DoesNotExist, ValueError, TypeError):
+            return JsonResponse({"erro": "Equipamento inválido."}, status=400)
+
+    if periodo is not None and periodo not in _PERIODOS_VALIDOS:
+        return JsonResponse({"erro": 'Período inválido. Use "manha", "tarde" ou "noite".'}, status=400)
+
+    vagas = motor.buscar_vagas(
+        tipo_sessao=tipo, dia=dia, professor=professor, equipamento=equipamento, periodo=periodo, limite=8
+    )
+
+    return JsonResponse(
+        {
+            "vagas": [
+                {
+                    "professor_id": vaga["professor"].pk,
+                    "professor_nome": str(vaga["professor"]),
+                    "equipamento_id": vaga["equipamento"].pk if vaga["equipamento"] else None,
+                    "equipamento_nome": str(vaga["equipamento"]) if vaga["equipamento"] else None,
+                    "inicio": timezone.localtime(vaga["inicio"]).strftime("%H:%M"),
+                    "fim": timezone.localtime(vaga["fim"]).strftime("%H:%M"),
+                }
+                for vaga in vagas
+            ]
+        }
+    )
 
 
 @login_required
