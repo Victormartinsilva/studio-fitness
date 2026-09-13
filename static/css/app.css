@@ -673,19 +673,40 @@ dialog.folha-inferior::backdrop { background: rgba(36,16,44,.5); }
 .botao-mais:hover { background: #5a2170; color: #fff; }
 
 /* ---------- modal do formulário (sem depender de JS) ---------- */
+/* Mobile (padrão): vira bottom sheet — ancorado embaixo, cantos arredondados
+   só no topo, ocupando a largura toda; z-index (41) já fica acima de
+   `nav.tabs` (30), então não precisa reservar espaço pra ela. Desktop
+   (>=900px) volta a ficar centralizado, como antes (Etapa 4.1). */
 .modal-fundo { position: fixed; inset: 0; background: rgba(36,16,44,.5); z-index: 40; }
 dialog.modal-cartao { border: none; padding: 0; margin: 0; }
 dialog.modal-cartao:not([open]) { display: none; }
 dialog.modal-cartao[open] {
-  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  z-index: 41; width: min(560px, 92vw); max-height: 88vh; overflow: auto;
-  background: var(--superficie); border-radius: var(--r-lg); padding: 18px;
-  box-shadow: 0 20px 60px rgba(36,16,44,.28);
+  position: fixed; z-index: 41; overflow: auto;
+  left: 0; right: 0; bottom: 0; top: auto; width: 100%;
+  max-height: 90dvh;
+  background: var(--superficie); border-radius: var(--r-lg) var(--r-lg) 0 0; padding: 18px;
+  box-shadow: 0 -8px 40px rgba(36,16,44,.28);
 }
 .modal-cabecalho { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .modal-cabecalho h2 { margin: 0; }
 .modal-fechar { color: var(--ink-4); font-size: 22px; line-height: 1; text-decoration: none; }
 .modal-fechar:hover { color: var(--roxo); }
+/* Ações (Salvar/Cancelar) sempre alcançáveis: sticky dentro do próprio
+   scroll do dialog (que tem overflow:auto), bleeding até a borda pelo
+   mesmo truque de margem negativa + padding próprio usado em
+   `.acoes-confirmar` (Etapa 3b). */
+dialog.modal-cartao .acoes-form {
+  position: sticky; bottom: -18px;
+  background: var(--superficie); margin: 16px -18px -18px; padding: 12px 18px;
+  border-top: 1px solid var(--borda); z-index: 5;
+}
+
+@media (min-width: 900px) {
+  dialog.modal-cartao[open] {
+    top: 50%; left: 50%; right: auto; bottom: auto; transform: translate(-50%, -50%);
+    width: min(560px, 92vw); max-height: 88vh; border-radius: var(--r-lg);
+  }
+}
 
 /* ---------- métricas com variação (avaliação física) ---------- */
 .metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
