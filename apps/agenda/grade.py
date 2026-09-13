@@ -49,6 +49,17 @@ def _offset(momento, dia):
     return _minutos(momento, dia) * PX_POR_MIN
 
 
+def _minutos_de_hora(hora):
+    """Minuto (clipado à janela do dia) de um horário sem data (`time`)
+    dentro da pista do dia — mesma referência de `_minutos`, usada para
+    converter as janelas de `DisponibilidadeProfessor` (que não têm data,
+    só hora de início/fim) para o mesmo sistema de minutos-desde-a-abertura
+    usado pelos gaps livres do equipamento."""
+    minutos = (hora.hour - HORA_INICIO) * 60 + hora.minute
+    limite = (HORA_FIM - HORA_INICIO) * 60
+    return max(0, min(minutos, limite))
+
+
 def _bloco(classe, inicio, fim, dia, titulo="", subtitulo="", inset_topo=False, inset_base=False):
     top = _offset(inicio, dia)
     altura = _offset(fim, dia) - top
@@ -71,13 +82,9 @@ def _bloco(classe, inicio, fim, dia, titulo="", subtitulo="", inset_topo=False, 
     }
 
 
-def _vagas_livres(ocupados, dia, equipamento_id, agora, professor_id=None):
-    """Calcula os intervalos sem sessão/bloqueio na pista e devolve blocos
-    clicáveis de SLOT_MIN minutos para permitir agendar direto na grade.
-    Quando `professor_id` é informado (professor logado), o link já vem
-    pré-preenchido com esse professor."""
-    limite = (HORA_FIM - HORA_INICIO) * 60
-
+def _gaps_livres(ocupados, limite):
+    """Intervalos (inicio_min, fim_min) sem sessão/bloqueio dentro do
+    expediente, a partir da lista de intervalos ocupados de uma coluna."""
     ocupados = sorted(ocupados)
     livres_min = []
     cursor = 0
@@ -89,44 +96,131 @@ def _vagas_livres(ocupados, dia, equipamento_id, agora, professor_id=None):
         cursor = max(cursor, fim_min)
     if cursor < limite:
         livres_min.append((cursor, limite))
+    return livres_min
+
+
+def _janelas_disponibilidade_professor(professor, dia):
+    """Janelas (inicio_min, fim_min) em que o professor está disponível
+    nesse dia da semana, no mesmo sistema de minutos-desde-a-abertura dos
+    gaps livres do equipamento.
+
+    `None` = sem NENHUMA `DisponibilidadeProfessor` cadastrada (em
+    qualquer dia) = sem restrição, mesma regra de
+    `motor.professor_dentro_da_disponibilidade`. Lista vazia = tem
+    disponibilidade cadastrada em outros dias da semana, mas nenhuma
+    neste — indisponível o dia inteiro."""
+    if not professor.disponibilidades.exists():
+        return None
+    return [
+        (_minutos_de_hora(d.hora_inicio), _minutos_de_hora(d.hora_fim))
+        for d in professor.disponibilidades.filter(dia_semana=dia.weekday())
+    ]
+
+
+def _intersecta_com_disponibilidade(gaps, janelas_disponibilidade):
+    """Interseção dos gaps livres do equipamento com as janelas de
+    disponibilidade do professor logado. `janelas_disponibilidade=None`
+    (sem restrição) devolve os gaps como vieram."""
+    if janelas_disponibilidade is None:
+        return gaps
+    resultado = []
+    for g_inicio, g_fim in gaps:
+        for j_inicio, j_fim in janelas_disponibilidade:
+            inicio = max(g_inicio, j_inicio)
+            fim = min(g_fim, j_fim)
+            if inicio < fim:
+                resultado.append((inicio, fim))
+    return sorted(resultado)
+
+
+def _slots_do_gap(inicio_gap, fim_gap, dia, equipamento_id, agora, professor_id):
+    """Blocos clicáveis de SLOT_MIN minutos dentro de UM intervalo livre —
+    usados tanto na lista "por slot" (desktop, `_vagas_livres`) quanto
+    dentro do bottom sheet de cada intervalo consolidado (mobile,
+    `_vagas_consolidadas`)."""
+    slots = []
+    m = inicio_gap
+    while m < fim_gap:
+        fim_slot = min(m + SLOT_MIN, fim_gap)
+        if fim_slot - m < SLOT_MIN_MINIMO:
+            break
+        hh, mm = divmod(HORA_INICIO * 60 + m, 60)
+        momento = timezone.make_aware(datetime.combine(dia, time(hh, mm)))
+        # Altura visual mínima (~40px) pra não ficar abaixo do alvo de
+        # toque recomendado: só cresce quando este é o ÚLTIMO slot do
+        # gap (nenhum outro slot vai nascer depois dele nesta janela —
+        # mesma condição de `break` acima, olhando pro que resta após
+        # `fim_slot`), senão cresceria por cima do próximo bloco "vaga"
+        # vizinho. O teto é sempre o fim real do gap (`fim_gap`), nunca
+        # inventa tempo livre que não existe.
+        altura_px = (fim_slot - m) * PX_POR_MIN
+        eh_ultimo_slot_do_gap = (fim_gap - fim_slot) < SLOT_MIN_MINIMO
+        if eh_ultimo_slot_do_gap:
+            altura_max_px = (fim_gap - m) * PX_POR_MIN
+            altura_px = min(max(altura_px, ALTURA_MIN_VAGA_PX), altura_max_px)
+        if momento >= agora:
+            href = "{}?data={}&hora_inicio={:02d}:{:02d}&equipamento={}".format(
+                reverse("agenda:agendar"), dia.isoformat(), hh, mm, equipamento_id
+            )
+            if professor_id is not None:
+                href += "&professor={}".format(professor_id)
+            slots.append(
+                {
+                    "top": "{:.1f}".format(m * PX_POR_MIN),
+                    "altura": "{:.1f}".format(altura_px),
+                    "titulo": "{:02d}:{:02d}".format(hh, mm),
+                    "href": href,
+                }
+            )
+        m = fim_slot
+    return slots
+
+
+def _vagas_livres(ocupados, dia, equipamento_id, agora, professor_id=None, janelas_disponibilidade=None):
+    """Calcula os intervalos sem sessão/bloqueio na pista e devolve blocos
+    clicáveis de SLOT_MIN minutos para permitir agendar direto na grade
+    (usado no desktop — no mobile, ver `_vagas_consolidadas`). Quando
+    `professor_id` é informado (professor logado), o link já vem
+    pré-preenchido com esse professor. `janelas_disponibilidade`, quando
+    informado (não `None`), restringe os intervalos à disponibilidade
+    cadastrada do professor logado (ver `_janelas_disponibilidade_professor`)."""
+    limite = (HORA_FIM - HORA_INICIO) * 60
+    gaps = _intersecta_com_disponibilidade(_gaps_livres(ocupados, limite), janelas_disponibilidade)
 
     vagas = []
-    for inicio_gap, fim_gap in livres_min:
-        m = inicio_gap
-        while m < fim_gap:
-            fim_slot = min(m + SLOT_MIN, fim_gap)
-            if fim_slot - m < SLOT_MIN_MINIMO:
-                break
-            hh, mm = divmod(HORA_INICIO * 60 + m, 60)
-            momento = timezone.make_aware(datetime.combine(dia, time(hh, mm)))
-            # Altura visual mínima (~40px) pra não ficar abaixo do alvo de
-            # toque recomendado: só cresce quando este é o ÚLTIMO slot do
-            # gap (nenhum outro slot vai nascer depois dele nesta janela —
-            # mesma condição de `break` acima, olhando pro que resta após
-            # `fim_slot`), senão cresceria por cima do próximo bloco "vaga"
-            # vizinho. O teto é sempre o fim real do gap (`fim_gap`), nunca
-            # inventa tempo livre que não existe.
-            altura_px = (fim_slot - m) * PX_POR_MIN
-            eh_ultimo_slot_do_gap = (fim_gap - fim_slot) < SLOT_MIN_MINIMO
-            if eh_ultimo_slot_do_gap:
-                altura_max_px = (fim_gap - m) * PX_POR_MIN
-                altura_px = min(max(altura_px, ALTURA_MIN_VAGA_PX), altura_max_px)
-            if momento >= agora:
-                href = "{}?data={}&hora_inicio={:02d}:{:02d}&equipamento={}".format(
-                    reverse("agenda:agendar"), dia.isoformat(), hh, mm, equipamento_id
-                )
-                if professor_id is not None:
-                    href += "&professor={}".format(professor_id)
-                vagas.append(
-                    {
-                        "top": "{:.1f}".format(m * PX_POR_MIN),
-                        "altura": "{:.1f}".format(altura_px),
-                        "titulo": "{:02d}:{:02d}".format(hh, mm),
-                        "href": href,
-                    }
-                )
-            m = fim_slot
+    for inicio_gap, fim_gap in gaps:
+        vagas.extend(_slots_do_gap(inicio_gap, fim_gap, dia, equipamento_id, agora, professor_id))
     return vagas
+
+
+def _vagas_consolidadas(ocupados, dia, equipamento_id, agora, professor_id=None, janelas_disponibilidade=None):
+    """Um bloco por intervalo livre CONTÍNUO (em vez de um por slot de
+    30min) — usado no mobile pra não poluir a coluna com dezenas de
+    botões "+ HH:MM" num dia parado. Cada bloco cobre visualmente o
+    intervalo inteiro e carrega a lista de slots daquele intervalo
+    (`slots`, mesmo formato de `_vagas_livres`) pra preencher o bottom
+    sheet aberto ao tocar. Intervalos sem nenhum slot clicável (todo no
+    passado, ou curto demais) não geram bloco."""
+    limite = (HORA_FIM - HORA_INICIO) * 60
+    gaps = _intersecta_com_disponibilidade(_gaps_livres(ocupados, limite), janelas_disponibilidade)
+
+    consolidadas = []
+    for indice, (inicio_gap, fim_gap) in enumerate(gaps):
+        slots = _slots_do_gap(inicio_gap, fim_gap, dia, equipamento_id, agora, professor_id)
+        if not slots:
+            continue
+        hh_inicio, mm_inicio = divmod(HORA_INICIO * 60 + inicio_gap, 60)
+        hh_fim, mm_fim = divmod(HORA_INICIO * 60 + fim_gap, 60)
+        consolidadas.append(
+            {
+                "id": "folha-vaga-{}-{}".format(equipamento_id, indice),
+                "top": "{:.1f}".format(inicio_gap * PX_POR_MIN),
+                "altura": "{:.1f}".format(max((fim_gap - inicio_gap) * PX_POR_MIN, ALTURA_MIN_VAGA_PX)),
+                "titulo": "Livre {:02d}:{:02d}–{:02d}:{:02d}".format(hh_inicio, mm_inicio, hh_fim, mm_fim),
+                "slots": slots,
+            }
+        )
+    return consolidadas
 
 
 @login_required
@@ -184,6 +278,15 @@ def grade(request):
     elif professor_logado is not None:
         professor_destaque_id = professor_logado.id
     filtro_professor_ativo = professor_destaque_id is not None and bool(filtro_professor_id)
+
+    # Disponibilidade cadastrada do professor logado (item 2 da Etapa 2b):
+    # restringe as vagas mostradas pra ele só ao horário em que realmente
+    # está disponível, mesmo que o equipamento esteja fisicamente livre.
+    # `None` = sem restrição (mesma regra de
+    # `motor.professor_dentro_da_disponibilidade`).
+    janelas_disponibilidade = (
+        _janelas_disponibilidade_professor(professor_logado, dia) if professor_logado is not None else None
+    )
 
     # A grade não mostra mais "próxima vaga" (KPI removido) — pula o
     # cálculo mais caro de resumo_do_dia, que aqui só serve pra
@@ -259,15 +362,24 @@ def grade(request):
                 menor_inicio_ocupado_min = candidato
 
         vagas = []
+        vagas_consolidadas = []
         if pode_agendar and equipamento.status == Equipamento.Status.ATIVO:
             professor_id_para_vaga = professor_logado.id if professor_logado is not None else None
-            vagas = _vagas_livres(ocupados, dia, equipamento.id, agora, professor_id=professor_id_para_vaga)
+            vagas = _vagas_livres(
+                ocupados, dia, equipamento.id, agora,
+                professor_id=professor_id_para_vaga, janelas_disponibilidade=janelas_disponibilidade,
+            )
+            vagas_consolidadas = _vagas_consolidadas(
+                ocupados, dia, equipamento.id, agora,
+                professor_id=professor_id_para_vaga, janelas_disponibilidade=janelas_disponibilidade,
+            )
 
         colunas.append(
             {
                 "equipamento": equipamento,
                 "blocos": blocos,
                 "vagas": vagas,
+                "vagas_consolidadas": vagas_consolidadas,
             }
         )
 

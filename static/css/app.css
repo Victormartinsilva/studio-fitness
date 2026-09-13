@@ -401,6 +401,50 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
   transition: background .12s ease, border-color .12s ease;
 }
 .grade .bloco.livre:hover { background: var(--verde); border-color: var(--verde); color: #17300a; }
+/* `.livre-consolidada` é um `<button>` (abre um bottom sheet, não navega),
+   `.livre-slot` continua sendo `<a>` (link direto pro agendar) — qual das
+   duas aparece depende do breakpoint (ver `@media` no fim do arquivo:
+   mobile mostra consolidada, desktop mostra slot a slot). `<button>` não
+   herda fonte/alinhamento do UA stylesheet por padrão (mesmo motivo de
+   `.chip`/`.assistente-fechar`), por isso o reset aqui. */
+.grade .bloco.livre-consolidada {
+  font: inherit; text-align: center; appearance: none; width: 100%;
+}
+/* Mobile (padrão, sem media query): mostra um bloco por intervalo livre
+   inteiro ("Livre 17:30–21:00", abre bottom sheet). Desktop (900px+,
+   `@media` no fim do arquivo) inverte pra um bloco por slot de 30min,
+   como sempre foi lá — tem espaço de sobra, não precisa consolidar. */
+.grade .bloco.livre-slot { display: none; }
+
+/* ---------- agenda: folha inferior (bottom sheet nativo, <dialog>) ---------- */
+/* Usado pelas vagas consolidadas no mobile (uma etapa futura reaproveita
+   este mesmo estilo pra outros modais do app). Ancorado embaixo da tela
+   (o UA por padrão centraliza `<dialog>` — sobrescrito abaixo), cantos
+   arredondados só no topo, rolável se o conteúdo passar de `max-height`. */
+dialog.folha-inferior {
+  border: none; padding: 0; margin: 0; width: 100%; max-width: 100%;
+  max-height: 80dvh; border-radius: var(--r-lg) var(--r-lg) 0 0;
+  background: var(--superficie); box-shadow: 0 -8px 30px rgba(36,16,44,.2);
+}
+dialog.folha-inferior:not([open]) { display: none; }
+dialog.folha-inferior[open] { position: fixed; bottom: 0; left: 0; right: 0; margin: 0; display: flex; flex-direction: column; }
+dialog.folha-inferior::backdrop { background: rgba(36,16,44,.5); }
+.folha-cabecalho {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid var(--borda); flex: none;
+}
+.folha-cabecalho h3 { margin: 0; }
+.folha-fechar {
+  border: none; background: transparent; font: inherit; font-size: 22px; line-height: 1;
+  color: var(--ink-4); cursor: pointer; padding: 0 4px;
+  min-width: 44px; min-height: 44px;
+}
+.folha-fechar:hover { color: var(--roxo); }
+.folha-conteudo {
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+}
+.folha-conteudo .btn { width: 100%; }
 
 /* ---------- agenda: legenda das cores, recolhível no mobile ---------- */
 /* Mesmo padrão visual do `.calendario-picker`/`.professores-picker` acima
@@ -740,6 +784,10 @@ dialog.modal-cartao[open] {
      estado (aberto/fechado) do `<details>`. */
   .legenda summary { display: none; }
   .legenda .legenda-conteudo { display: flex !important; }
+  /* Desktop: vaga a vaga (slot de 30min) em vez do bloco consolidado do
+     mobile — tem espaço de sobra pra não precisar do bottom sheet. */
+  .grade .bloco.livre-slot { display: flex; }
+  .grade .bloco.livre-consolidada { display: none; }
 }
 
 /* ---------- mobile estreito (celular) ---------- */

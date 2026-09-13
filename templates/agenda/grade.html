@@ -78,7 +78,10 @@
             <div class="pista" style="height:{{ altura_pista }}px;background:repeating-linear-gradient(to bottom, #fff 0 {{ altura_hora_menos1 }}px, #f3eef6 {{ altura_hora_menos1 }}px {{ altura_hora }}px)">
                 {% if mostrar_linha_agora %}<div class="linha-agora" style="top:{{ linha_agora_top }}px"></div>{% endif %}
                 {% for v in coluna.vagas %}
-                <a class="bloco livre" style="top:{{ v.top }}px;height:{{ v.altura }}px" href="{{ v.href }}" title="Agendar às {{ v.titulo }}">+ {{ v.titulo }}</a>
+                <a class="bloco livre livre-slot" style="top:{{ v.top }}px;height:{{ v.altura }}px" href="{{ v.href }}" title="Agendar às {{ v.titulo }}">+ {{ v.titulo }}</a>
+                {% endfor %}
+                {% for vc in coluna.vagas_consolidadas %}
+                <button type="button" class="bloco livre livre-consolidada" style="top:{{ vc.top }}px;height:{{ vc.altura }}px" data-abre-dialog="{{ vc.id }}">{{ vc.titulo }}</button>
                 {% endfor %}
                 {% for b in coluna.blocos %}
                 <div class="bloco {{ b.classe }}" style="top:{{ b.top }}px;height:{{ b.altura }}px">
@@ -87,6 +90,19 @@
                 </div>
                 {% endfor %}
             </div>
+            {% for vc in coluna.vagas_consolidadas %}
+            <dialog id="{{ vc.id }}" class="folha-inferior">
+                <div class="folha-cabecalho">
+                    <h3>{{ vc.titulo }}</h3>
+                    <button type="button" class="folha-fechar" aria-label="Fechar">&times;</button>
+                </div>
+                <div class="folha-conteudo">
+                    {% for s in vc.slots %}
+                    <a class="btn btn-secundario btn-bloco" href="{{ s.href }}">{{ s.titulo }}</a>
+                    {% endfor %}
+                </div>
+            </dialog>
+            {% endfor %}
         </div>
         {% empty %}
         <div class="vazio" style="flex:1">Nenhum equipamento cadastrado.</div>

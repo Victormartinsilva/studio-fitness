@@ -419,6 +419,79 @@ class GradeClicavelTests(TestCase):
         "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
     }
 )
+class VagasConsolidadasEDisponibilidadeTests(TestCase):
+    """Etapa 2b: vagas consolidadas por intervalo (mobile) e filtro pela
+    disponibilidade cadastrada do professor logado."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45)
+        usuario_gestor = Usuario.objects.create_user(
+            "gestor2b", password="teste12345", papel=Usuario.Papel.GESTOR
+        )
+        self.gestor = usuario_gestor
+        usuario = Usuario.objects.create_user("bia2b", password="teste12345", papel=Usuario.Papel.PROFESSOR)
+        self.professor = Professor.objects.create(usuario=usuario)
+        self.professor.tipos_habilitados.add(self.tipo)
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+        # próxima segunda-feira: dia da semana fixo, pra registrar
+        # disponibilidade sem depender de qual dia é "hoje" no momento do teste.
+        hoje = timezone.localdate()
+        dias_ate_segunda = (0 - hoje.weekday()) % 7 or 7
+        self.dia = hoje + timedelta(days=dias_ate_segunda)
+        self.url = reverse("agenda:grade") + f"?data={self.dia.isoformat()}"
+
+    def test_professor_com_disponibilidade_so_de_manha_nao_ve_vaga_a_tarde(self):
+        DisponibilidadeProfessor.objects.create(
+            professor=self.professor, dia_semana=self.dia.weekday(),
+            hora_inicio="07:00", hora_fim="12:00",
+        )
+        self.client.force_login(self.professor.usuario)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "hora_inicio=09:00")
+        self.assertNotContains(response, "hora_inicio=14:00")
+
+    def test_professor_sem_disponibilidade_cadastrada_continua_vendo_o_dia_todo(self):
+        self.client.force_login(self.professor.usuario)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "hora_inicio=09:00")
+        self.assertContains(response, "hora_inicio=14:00")
+
+    def test_gestor_nao_sofre_filtro_de_disponibilidade_de_ninguem(self):
+        DisponibilidadeProfessor.objects.create(
+            professor=self.professor, dia_semana=self.dia.weekday(),
+            hora_inicio="07:00", hora_fim="12:00",
+        )
+        self.client.force_login(self.gestor)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "hora_inicio=09:00")
+        self.assertContains(response, "hora_inicio=14:00")
+
+    def test_intervalo_livre_continuo_aparece_consolidado_no_contexto(self):
+        self.client.force_login(self.gestor)
+
+        response = self.client.get(self.url)
+
+        coluna = next(c for c in response.context["colunas"] if c["equipamento"] == self.equipamento)
+        self.assertEqual(len(coluna["vagas_consolidadas"]), 1)
+        consolidada = coluna["vagas_consolidadas"][0]
+        self.assertTrue(consolidada["titulo"].startswith("Livre "))
+        self.assertGreater(len(consolidada["slots"]), 1)
+        self.assertContains(response, f'data-abre-dialog="{consolidada["id"]}"')
+        self.assertContains(response, f'id="{consolidada["id"]}"')
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
 class GradeChromeCompactoTests(TestCase):
     """Etapa 2a (compactação do cabeçalho/navegação da grade no mobile): só
     mudou CSS/HTML de layout, então o que dá pra travar aqui é que nenhum

@@ -30,6 +30,35 @@
       );
     }
 
+    // ---- Bottom sheets das vagas consolidadas (mobile): cada bloco
+    // "Livre HH:MM–HH:MM" (`.livre-consolidada`, só visível no mobile via
+    // CSS) abre o `<dialog class="folha-inferior">` correspondente, já
+    // renderizado pelo servidor com os horários daquele intervalo — nada
+    // de montar conteúdo dinamicamente em JS. Fecha no botão "×" ou
+    // clicando fora (no ::backdrop, truque padrão de `<dialog>`: o clique
+    // no backdrop chega com `target` sendo o próprio elemento `<dialog>`).
+    document.querySelectorAll("[data-abre-dialog]").forEach(function (botao) {
+      botao.addEventListener("click", function () {
+        const alvo = document.getElementById(botao.dataset.abreDialog);
+        if (alvo && typeof alvo.showModal === "function") {
+          alvo.showModal();
+        }
+      });
+    });
+    document.querySelectorAll("dialog.folha-inferior").forEach(function (folha) {
+      const fechar = folha.querySelector(".folha-fechar");
+      if (fechar) {
+        fechar.addEventListener("click", function () {
+          folha.close();
+        });
+      }
+      folha.addEventListener("click", function (evento) {
+        if (evento.target === folha) {
+          folha.close();
+        }
+      });
+    });
+
     // ---- Auto-scroll ao abrir a página: rola até a "linha do agora" ou,
     // na falta dela, o primeiro horário ocupado do dia (`grade.py` calcula
     // os dois em `linha_agora_top`/`scroll_inicial_top` e expõe via
