@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
@@ -29,6 +29,18 @@ def home(request):
         minhas = sessoes
 
     proxima = minhas.filter(inicio__gte=agora).order_by("inicio").first()
+
+    # "Hoje: N sessões" (Etapa 4.4): lista compacta pra home do professor no
+    # celular, com ação rápida de marcar realizada/faltou sem precisar abrir
+    # a agenda inteira.
+    sessoes_hoje = []
+    total_sessoes_hoje = 0
+    if usuario.is_professor and hasattr(usuario, "professor"):
+        inicio_hoje = timezone.make_aware(datetime.combine(hoje, time.min))
+        fim_hoje = inicio_hoje + timedelta(days=1)
+        hoje_qs = minhas.filter(inicio__gte=inicio_hoje, inicio__lt=fim_hoje).order_by("inicio")
+        total_sessoes_hoje = hoje_qs.count()
+        sessoes_hoje = list(hoje_qs[:3])
 
     kpis = []
     if usuario.is_superuser or usuario.is_gestor:
@@ -71,6 +83,8 @@ def home(request):
             "proximas_24h": minhas.filter(inicio__gte=agora, inicio__lte=agora + timedelta(hours=24)).count(),
             "modulos_previa": modulos_previa,
             "resumo_evolucao": resumo_evolucao,
+            "sessoes_hoje": sessoes_hoje,
+            "total_sessoes_hoje": total_sessoes_hoje,
         },
     )
 

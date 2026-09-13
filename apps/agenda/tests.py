@@ -1471,6 +1471,30 @@ class StatusViewTests(TestCase):
         self.assertEqual(self.sessao.status, Sessao.Status.CONFIRMADA)
         self.assertRedirects(response, reverse("agenda:detalhe", args=[self.sessao.pk]))
 
+    def test_next_valido_redireciona_para_la_em_vez_do_detalhe(self):
+        # Usado pela lista "Hoje: N sessões" da home (Etapa 4.4): a ação
+        # rápida de marcar realizada/faltou volta pra home em vez de navegar
+        # pra página de detalhe da sessão.
+        self.client.force_login(self.professor.usuario)
+
+        response = self.client.post(self.url, {"status": "realizada", "next": reverse("painel:home")})
+
+        self.assertRedirects(response, reverse("painel:home"))
+
+    def test_next_para_outro_host_e_ignorado(self):
+        self.client.force_login(self.professor.usuario)
+
+        response = self.client.post(self.url, {"status": "realizada", "next": "https://evil.example.com/"})
+
+        self.assertRedirects(response, reverse("agenda:detalhe", args=[self.sessao.pk]))
+
+    def test_get_nao_e_permitido(self):
+        self.client.force_login(self.professor.usuario)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 405)
+
 
 @override_settings(
     STORAGES={

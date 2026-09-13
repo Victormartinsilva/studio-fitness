@@ -7,6 +7,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from apps.cadastros.models import Aluno, Equipamento, Professor, TipoSessao
@@ -34,7 +35,7 @@ def minhas_sessoes(request):
         {
             "sessoes": sessoes.select_related("professor__usuario", "aluno", "equipamento"),
             "pode_agendar": pode_agendar,
-            "aba": "agenda",
+            "aba": "minhas_sessoes",
         },
     )
 
@@ -255,6 +256,20 @@ def detalhe(request, pk):
 
 @login_required
 @require_POST
+def _redirecionar_apos_status(request, sessao):
+    """Volta pra onde a ação foi disparada (ex.: painel:home, na lista
+    "Hoje: N sessões") quando o form manda `next`; sem isso, cai no padrão
+    de sempre (a página de detalhe da sessão)."""
+    destino = request.POST.get("next", "")
+    if destino and url_has_allowed_host_and_scheme(
+        destino, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return redirect(destino)
+    return redirect("agenda:detalhe", pk=sessao.pk)
+
+
+@require_POST
+@login_required
 def status(request, pk):
     sessao = get_object_or_404(Sessao, pk=pk)
     usuario = request.user
@@ -265,7 +280,7 @@ def status(request, pk):
     valores_permitidos = {Sessao.Status.CONFIRMADA, Sessao.Status.REALIZADA, Sessao.Status.FALTOU}
     if valor not in valores_permitidos:
         messages.error(request, "Status inválido.")
-        return redirect("agenda:detalhe", pk=sessao.pk)
+        return _redirecionar_apos_status(request, sessao)
 
     try:
         servicos.marcar_status(sessao=sessao, status=valor, usuario=usuario)
@@ -273,7 +288,7 @@ def status(request, pk):
         messages.error(request, exc.message)
     else:
         messages.success(request, f"Sessão marcada como {sessao.get_status_display().lower()}.")
-    return redirect("agenda:detalhe", pk=sessao.pk)
+    return _redirecionar_apos_status(request, sessao)
 
 
 @login_required

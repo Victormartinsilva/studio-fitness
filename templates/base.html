@@ -22,7 +22,7 @@
         {% if request.user.is_authenticated %}
         <nav class="nav-desktop">
             <a href="{% url 'painel:home' %}" class="{% if aba == 'inicio' %}ativo{% endif %}">Início</a>
-            <a href="{% url 'agenda:grade' %}#dia-atual" class="{% if aba == 'agenda' %}ativo{% endif %}">Agenda</a>
+            <a href="{% url 'agenda:grade' %}#dia-atual" class="{% if aba == 'agenda' or aba == 'minhas_sessoes' %}ativo{% endif %}">Agenda</a>
             {% if request.user.is_professor and eixos_visiveis.meus_alunos %}
             <a href="{% url 'cadastros:meus_alunos' %}" class="{% if aba == 'meus_alunos' %}ativo{% endif %}">Meus alunos</a>
             {% endif %}
@@ -83,20 +83,44 @@
 
     {% if request.user.is_authenticated %}
     <nav class="tabs">
-        <a href="{% url 'painel:home' %}" class="{% if aba == 'inicio' %}ativo{% endif %}">Início</a>
-        <a href="{% url 'agenda:grade' %}#dia-atual" class="{% if aba == 'agenda' %}ativo{% endif %}">Agenda</a>
+        <a href="{% url 'painel:home' %}" class="{% if aba == 'inicio' %}ativo{% endif %}">
+            <svg class="tab-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9a1 1 0 0 0 1 1H9.5v-6h5v6H17.5a1 1 0 0 0 1-1v-9"/></svg>
+            <span class="tab-rotulo">Início</span>
+        </a>
+        <a href="{% url 'agenda:grade' %}#dia-atual" class="{% if aba == 'agenda' %}ativo{% endif %}">
+            <svg class="tab-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>
+            <span class="tab-rotulo">Agenda</span>
+        </a>
+        {% if request.user.is_aluno %}
+        <a href="{% url 'agenda:minhas_sessoes' %}" class="{% if aba == 'minhas_sessoes' %}ativo{% endif %}">
+            <svg class="tab-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>
+            <span class="tab-rotulo">Minhas sessões</span>
+        </a>
+        {% endif %}
         {% if request.user.is_professor and eixos_visiveis.meus_alunos %}
-        <a href="{% url 'cadastros:meus_alunos' %}" class="{% if aba == 'meus_alunos' %}ativo{% endif %}">Meus alunos</a>
+        <a href="{% url 'cadastros:meus_alunos' %}" class="{% if aba == 'meus_alunos' %}ativo{% endif %}">
+            <svg class="tab-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 13.2A4.6 4.6 0 0 1 20.5 17.8"/></svg>
+            <span class="tab-rotulo">Meus alunos</span>
+        </a>
         {% endif %}
         {% if request.user.is_aluno and eixos_visiveis.evolucao %}
-        <a href="{% url 'avaliacoes:minha_evolucao' %}" class="{% if aba == 'evolucao' %}ativo{% endif %}">Evolução</a>
+        <a href="{% url 'avaliacoes:minha_evolucao' %}" class="{% if aba == 'evolucao' %}ativo{% endif %}">
+            <svg class="tab-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-9"/><path d="M15 6h6v6"/></svg>
+            <span class="tab-rotulo">Evolução</span>
+        </a>
         {% endif %}
         {% if request.user.is_superuser or request.user.is_gestor %}
         {% if request.user.is_superuser or eixos_visiveis.alunos %}
-        <a href="{% url 'cadastros:alunos' %}" class="{% if aba == 'alunos' %}ativo{% endif %}">Alunos</a>
+        <a href="{% url 'cadastros:alunos' %}" class="{% if aba == 'alunos' %}ativo{% endif %}">
+            <svg class="tab-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 13.2A4.6 4.6 0 0 1 20.5 17.8"/></svg>
+            <span class="tab-rotulo">Alunos</span>
+        </a>
         {% endif %}
         {% if request.user.is_superuser or eixos_visiveis.cadastros %}
-        <a href="{% url 'cadastros:equipamentos' %}" class="{% if aba == 'equipamentos' or aba == 'tipos' or aba == 'planos' or aba == 'contratacoes' %}ativo{% endif %}">Cadastros</a>
+        <a href="{% url 'cadastros:equipamentos' %}" class="{% if aba == 'equipamentos' or aba == 'tipos' or aba == 'planos' or aba == 'contratacoes' %}ativo{% endif %}">
+            <svg class="tab-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 7a1.5 1.5 0 0 1 1.5-1.5h4l2 2h8A1.5 1.5 0 0 1 20.5 9v9A1.5 1.5 0 0 1 19 19.5H5A1.5 1.5 0 0 1 3.5 18z"/></svg>
+            <span class="tab-rotulo">Cadastros</span>
+        </a>
         {% endif %}
         {% endif %}
     </nav>

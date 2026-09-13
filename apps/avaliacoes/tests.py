@@ -140,7 +140,10 @@ class MinhaEvolucaoTests(TestCase):
         self.assertContains(response, "grafico-ev")
         self.assertContains(response, ">Ago<")
         self.assertContains(response, reverse("avaliacoes:minha_comparacao"))
-        self.assertContains(response, 'class="ativo">Evolução</a>', html=False)
+        self.assertContains(
+            response, '<a href="{}" class="ativo">'.format(reverse("avaliacoes:minha_evolucao")), html=False
+        )
+        self.assertContains(response, '<span class="tab-rotulo">Evolução</span>', html=False)
 
     def test_nao_mostra_avaliacao_de_outro_aluno(self):
         outro = Aluno.objects.create(nome="Pedro")

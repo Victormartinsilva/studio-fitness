@@ -36,6 +36,40 @@
     </div>
     {% endif %}
 
+    {% if sessoes_hoje %}
+    <div class="card">
+        <div class="linha-titulo" style="margin-bottom:8px">
+            <h2 style="margin:0;font-size:15px">Hoje: {{ total_sessoes_hoje }} {% if total_sessoes_hoje == 1 %}sessão{% else %}sessões{% endif %}</h2>
+            <span class="espaco"></span>
+            <a class="sub" href="{% url 'agenda:minhas_sessoes' %}">Ver todas ›</a>
+        </div>
+        <div class="lista">
+            {% for sessao in sessoes_hoje %}
+            <div class="item">
+                <div class="corpo">
+                    <span class="titulo">{{ sessao.inicio|date:"H:i" }} · {{ sessao.aluno }}</span>
+                    <span class="meta">{{ sessao.tipo }}{% if sessao.equipamento %} · {{ sessao.equipamento }}{% endif %}</span>
+                </div>
+                <div class="acoes">
+                    <form method="post" action="{% url 'agenda:status' sessao.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="realizada">
+                        <input type="hidden" name="next" value="{% url 'painel:home' %}">
+                        <button type="submit" class="btn btn-sm">Realizada</button>
+                    </form>
+                    <form method="post" action="{% url 'agenda:status' sessao.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="faltou">
+                        <input type="hidden" name="next" value="{% url 'painel:home' %}">
+                        <button type="submit" class="btn btn-secundario btn-sm">Faltou</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     {% if resumo_evolucao %}
     <a class="card resumo-evolucao" style="display:block;color:inherit" href="{% url 'avaliacoes:minha_evolucao' %}">
         <div class="linha-titulo" style="margin-bottom:10px">
@@ -65,18 +99,20 @@
 
 <section style="margin-top:20px">
     {% if request.user.is_superuser or request.user.is_gestor %}
-    <div class="linha-titulo">
-        <h2>Plataforma por fases</h2>
-        <span class="espaco"></span>
-        {% if request.user.is_superuser %}
-        <a class="btn btn-secundario btn-sm" href="{% url 'modulos:visoes' %}">Configurar visões dos usuários</a>
-        {% endif %}
-    </div>
-    <div class="pilares">
-        <div class="pilar"><span class="fase">Fase 1</span><strong>Base da operação</strong><span>Cadastros e agenda inteligente</span></div>
-        <div class="pilar"><span class="fase">Fase 2</span><strong>Financeiro e avaliação</strong><span>Avaliações já disponíveis</span></div>
-        <div class="pilar bloqueado"><span class="fase">Fase 3</span><strong>Experiência do aluno</strong><span>Em desenvolvimento</span></div>
-        <div class="pilar bloqueado"><span class="fase">Fase 4</span><strong>Automação</strong><span>Em desenvolvimento</span></div>
+    <div class="roadmap-fases">
+        <div class="linha-titulo">
+            <h2>Plataforma por fases</h2>
+            <span class="espaco"></span>
+            {% if request.user.is_superuser %}
+            <a class="btn btn-secundario btn-sm" href="{% url 'modulos:visoes' %}">Configurar visões dos usuários</a>
+            {% endif %}
+        </div>
+        <div class="pilares">
+            <div class="pilar"><span class="fase">Fase 1</span><strong>Base da operação</strong><span>Cadastros e agenda inteligente</span></div>
+            <div class="pilar"><span class="fase">Fase 2</span><strong>Financeiro e avaliação</strong><span>Avaliações já disponíveis</span></div>
+            <div class="pilar bloqueado"><span class="fase">Fase 3</span><strong>Experiência do aluno</strong><span>Em desenvolvimento</span></div>
+            <div class="pilar bloqueado"><span class="fase">Fase 4</span><strong>Automação</strong><span>Em desenvolvimento</span></div>
+        </div>
     </div>
     {% elif modulos_previa %}
     <h2>Em breve para você</h2>

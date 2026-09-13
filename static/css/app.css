@@ -748,6 +748,10 @@ dialog.modal-cartao .acoes-form {
 .publico, .pilar > span:last-child { font-size: 12px; color: var(--ink-3); }
 .pilar { min-height: 128px; }
 .pilar strong { font-family: "Outfit", sans-serif; font-size: 16px; }
+/* Roteiro comercial ("Plataforma por fases") não é conteúdo operacional —
+   some da home no mobile pra não disputar espaço com "Próxima sessão"/KPIs;
+   continua disponível no desktop (Etapa 4.4). */
+.roadmap-fases { display: none; }
 .modulo-detalhe { max-width: 620px; }
 .modulo-detalhe h1 { margin: 0; }
 
@@ -774,11 +778,14 @@ dialog.modal-cartao .acoes-form {
   background: var(--superficie); border-top: 1px solid var(--borda);
 }
 .tabs a {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 500; color: var(--ink-4);
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  font-size: 11px; font-weight: 500; color: var(--ink-4);
   border-top: 3px solid transparent; margin-top: -1px;
 }
 .tabs a.ativo { color: var(--roxo); font-weight: 600; border-top-color: var(--roxo); }
+/* Ícones em SVG inline (sem biblioteca) — `stroke="currentColor"` já segue
+   a cor do texto, então `.ativo` colore ícone e rótulo juntos. */
+.tabs a svg.tab-icone { width: 22px; height: 22px; flex: none; }
 
 /* ---------- login ---------- */
 .login { max-width: 380px; margin: 8vh auto 0; display: flex; flex-direction: column; gap: 24px; }
@@ -979,6 +986,7 @@ dialog.modal-cartao .acoes-form {
      mobile — tem espaço de sobra pra não precisar do bottom sheet. */
   .grade .bloco.livre-slot { display: flex; }
   .grade .bloco.livre-consolidada { display: none; }
+  .roadmap-fases { display: block; }
 }
 
 /* ---------- mobile estreito (celular) ---------- */
