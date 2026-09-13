@@ -157,14 +157,34 @@
 .tabela-comparacao tbody th { font-weight: 600; color: var(--ink-2); }
 .tabela-comparacao td.delta { font-weight: 700; }
 
-/* ---------- celular estreito ---------- */
-@media (max-width: 380px) {
-  .cartao-ev .valor { font-size: 18px; }
-  .medida { font-size: 10.5px; }
-  .medida .valor { font-size: 11.5px; }
+/* ---------- celular ---------- */
+@media (max-width: 899px) {
+  /* Respiro para o botão flutuante do assistente: ele ocupa de 76px a
+     128px acima do fim da tela (62px da `.tabs` + 14px de folga + 52px),
+     mas o `main` só reserva 78px embaixo — sem isto, no fim da rolagem o
+     botão cobria "Compartilhar evolução", a última linha da comparação e
+     o "Excluir" do histórico. 60px = 128 − 78 + 10 de folga. */
+  .pagina-evolucao { padding-bottom: 60px; }
 }
 @media (max-width: 599px) {
   .acoes-evolucao .pilula { flex: 1 1 0; padding: 0 12px; }
+  /* Alvos de toque de 44px (chips de métrica, "‹ Voltar", "Editar"). */
+  .chips-metrica a { min-height: 44px; }
+  .pagina-evolucao .btn-sm { min-height: 44px; }
+}
+@media (max-width: 380px) {
+  .cartao-ev { padding: 9px 6px 9px 8px; }
+  .cartao-ev .rotulo-cartao { white-space: normal; letter-spacing: .02em; }
+  .cartao-ev .valor { font-size: 17px; }
+  .medida { font-size: 10.5px; }
+  .medida .valor { font-size: 11.5px; }
+  /* Em 320px as duas pílulas lado a lado quebravam o texto em 2 linhas. */
+  .acoes-evolucao .pilula { flex: 1 1 100%; }
+  /* Tabela de comparação cabe inteira em 320px (antes rolava de lado). */
+  .tabela-comparacao { font-size: 12px; }
+  .tabela-comparacao th, .tabela-comparacao td { padding: 9px 3px; }
+  .tabela-comparacao thead th { font-size: 10px; letter-spacing: 0; }
+  .tabela-comparacao tbody th { white-space: normal; }
 }
 
 /* ---------- desktop: 2 colunas como no slide ---------- */
