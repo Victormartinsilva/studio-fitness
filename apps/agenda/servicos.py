@@ -88,6 +88,23 @@ def remarcar(*, sessao, inicio, fim, equipamento=None, usuario=None):
 
 
 @transaction.atomic
+def marcar_status(*, sessao, status, usuario=None, detalhe=""):
+    """Muda o status da sessão (ex.: confirmada/realizada/faltou) e registra
+    o evento correspondente. Simples "setter com auditoria": não valida
+    transições de estado (ex. não impede ir de "cancelada" para
+    "realizada") — a única checagem é que `status` seja um valor válido de
+    `Sessao.Status`. Quem chama (a view) já cuida da permissão."""
+    valores_validos = {valor for valor, _ in Sessao.Status.choices}
+    if status not in valores_validos:
+        raise ValidationError(f'Status inválido: "{status}".')
+
+    sessao.status = status
+    sessao.save(update_fields=["status", "atualizado_em"])
+    EventoSessao.objects.create(sessao=sessao, usuario=usuario, acao=f"status:{status}", detalhe=detalhe)
+    return sessao
+
+
+@transaction.atomic
 def cancelar(*, sessao, justificativa="", usuario=None, detalhe=""):
     sessao.status = Sessao.Status.CANCELADA
     sessao.justificativa = justificativa

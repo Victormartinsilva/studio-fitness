@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Sessão de {{ sessao.aluno }} — Studio Fitness{% endblock %}
+{% block content %}
+<div class="linha-titulo">
+    <h1>{{ sessao.aluno }} · {{ sessao.inicio|date:"d/m H:i" }}</h1>
+    <span class="espaco"></span>
+    <a class="btn btn-secundario btn-sm" href="{% url 'agenda:minhas_sessoes' %}">‹ Voltar</a>
+</div>
+
+<div class="card" style="max-width:560px">
+    <p><strong>Aluno:</strong> {{ sessao.aluno }}</p>
+    <p><strong>Professor:</strong> {{ sessao.professor }}</p>
+    <p><strong>Tipo de sessão:</strong> {{ sessao.tipo }}</p>
+    <p><strong>Equipamento:</strong> {% if sessao.equipamento %}{{ sessao.equipamento }}{% else %}—{% endif %}</p>
+    <p><strong>Horário:</strong> {{ sessao.inicio|date:"d/m/Y H:i" }} – {{ sessao.fim|date:"H:i" }}</p>
+    {% if sessao.equipamento %}
+    <p><strong>Equipamento reservado:</strong> {{ sessao.reserva_inicio|date:"H:i" }} – {{ sessao.reserva_fim|date:"H:i" }}</p>
+    {% endif %}
+    <p>
+        <strong>Status:</strong>
+        <span class="tag {% if sessao.status == 'confirmada' or sessao.status == 'realizada' %}ok{% elif sessao.status == 'faltou' %}aviso{% endif %}">{{ sessao.get_status_display }}</span>
+    </p>
+    {% if link_whatsapp %}
+    <p><a class="btn btn-secundario btn-sm" href="{{ link_whatsapp }}" target="_blank" rel="noopener">Falar no WhatsApp</a></p>
+    {% endif %}
+</div>
+
+{% if pode_gerenciar %}
+<div class="card" style="max-width:560px;margin-top:16px">
+    <h2>Ações</h2>
+    <div class="acoes-form">
+        <form method="post" action="{% url 'agenda:status' sessao.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="status" value="realizada">
+            <button type="submit" class="btn">Realizada</button>
+        </form>
+        <form method="post" action="{% url 'agenda:status' sessao.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="status" value="faltou">
+            <button type="submit" class="btn btn-secundario">Faltou</button>
+        </form>
+        <a class="btn btn-secundario" href="{% url 'agenda:remarcar' sessao.pk %}">Remarcar</a>
+    </div>
+
+    <form method="post" action="{% url 'agenda:cancelar' sessao.pk %}" class="form" style="margin-top:16px" onsubmit="return confirm('Cancelar esta sessão?');">
+        {% csrf_token %}
+        <p>
+            <label for="justificativa">Justificativa do cancelamento (opcional)</label>
+            <textarea id="justificativa" name="justificativa" rows="3"></textarea>
+        </p>
+        <button type="submit" class="btn-perigo">Cancelar sessão</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta
 
 from django.contrib import messages
@@ -6,10 +7,29 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from . import motor, servicos
-from .forms import AgendarForm
+from .forms import AgendarForm, RemararForm
 from .models import Sessao
+
+
+def _pode_gerenciar_sessao(usuario, sessao):
+    """Mesma regra de permissão usada por `cancelar` desde a etapa
+    anterior: só gestor, superuser ou o professor DONO da sessão podem
+    mudar status, remarcar ou cancelar. Reaproveitada por `status`,
+    `remarcar` e `detalhe` (para decidir se mostra os botões de ação)."""
+    return (
+        usuario.is_superuser
+        or usuario.is_gestor
+        or (usuario.is_professor and hasattr(usuario, "professor") and sessao.professor_id == usuario.professor.id)
+    )
+
+
+def _digitos(texto):
+    """Extrai só os dígitos de um telefone cadastrado (remove espaços,
+    parênteses, traços etc.), para montar o link `https://wa.me/55...`."""
+    return re.sub(r"\D", "", texto or "")
 
 
 @login_required
@@ -119,16 +139,109 @@ def _sugestoes_para_template(*, professor, tipo, dia, hora_desejada, equipamento
 def cancelar(request, pk):
     sessao = get_object_or_404(Sessao, pk=pk)
     usuario = request.user
-    pode_cancelar = (
-        usuario.is_superuser
-        or usuario.is_gestor
-        or (usuario.is_professor and hasattr(usuario, "professor") and sessao.professor_id == usuario.professor.id)
-    )
-    if not pode_cancelar:
+    if not _pode_gerenciar_sessao(usuario, sessao):
         raise PermissionDenied("Você não pode cancelar esta sessão.")
 
     if request.method == "POST":
-        servicos.cancelar(sessao=sessao, usuario=usuario)
+        justificativa = request.POST.get("justificativa", "")
+        servicos.cancelar(sessao=sessao, justificativa=justificativa, usuario=usuario)
         messages.success(request, "Sessão cancelada.")
     return redirect("agenda:minhas_sessoes")
+
+
+@login_required
+def detalhe(request, pk):
+    sessao = get_object_or_404(
+        Sessao.objects.select_related("aluno", "professor__usuario", "tipo", "equipamento"), pk=pk
+    )
+    usuario = request.user
+
+    # Privacidade (LGPD): mesma regra já aplicada na grade — um aluno só
+    # pode ver o detalhe completo da PRÓPRIA sessão. Professor (qualquer
+    # um, não só o dono) e gestor/superuser podem ver o detalhe de
+    # qualquer sessão; só os botões de ação ficam restritos ao dono
+    # (`_pode_gerenciar_sessao`, checado abaixo para `pode_gerenciar`).
+    eh_aluno_dono = (
+        usuario.is_aluno and hasattr(usuario, "aluno") and sessao.aluno_id == usuario.aluno.id
+    )
+    pode_ver = usuario.is_superuser or usuario.is_gestor or usuario.is_professor or eh_aluno_dono
+    if not pode_ver:
+        raise PermissionDenied("Você não pode ver esta sessão.")
+
+    pode_gerenciar = _pode_gerenciar_sessao(usuario, sessao)
+
+    link_whatsapp = None
+    if pode_gerenciar:
+        digitos = _digitos(sessao.aluno.telefone)
+        if digitos:
+            link_whatsapp = f"https://wa.me/55{digitos}"
+
+    return render(
+        request,
+        "agenda/detalhe.html",
+        {
+            "sessao": sessao,
+            "pode_gerenciar": pode_gerenciar,
+            "link_whatsapp": link_whatsapp,
+            "aba": "agenda",
+        },
+    )
+
+
+@login_required
+@require_POST
+def status(request, pk):
+    sessao = get_object_or_404(Sessao, pk=pk)
+    usuario = request.user
+    if not _pode_gerenciar_sessao(usuario, sessao):
+        raise PermissionDenied("Você não pode mudar o status desta sessão.")
+
+    valor = request.POST.get("status")
+    valores_permitidos = {Sessao.Status.CONFIRMADA, Sessao.Status.REALIZADA, Sessao.Status.FALTOU}
+    if valor not in valores_permitidos:
+        messages.error(request, "Status inválido.")
+        return redirect("agenda:detalhe", pk=sessao.pk)
+
+    try:
+        servicos.marcar_status(sessao=sessao, status=valor, usuario=usuario)
+    except ValidationError as exc:
+        messages.error(request, exc.message)
+    else:
+        messages.success(request, f"Sessão marcada como {sessao.get_status_display().lower()}.")
+    return redirect("agenda:detalhe", pk=sessao.pk)
+
+
+@login_required
+def remarcar(request, pk):
+    sessao = get_object_or_404(Sessao, pk=pk)
+    usuario = request.user
+    if not _pode_gerenciar_sessao(usuario, sessao):
+        raise PermissionDenied("Você não pode remarcar esta sessão.")
+
+    if request.method == "POST":
+        form = RemararForm(request.POST)
+        if form.is_valid():
+            dados = form.cleaned_data
+            inicio = timezone.make_aware(datetime.combine(dados["data"], dados["hora_inicio"]))
+            fim = inicio + timedelta(minutes=sessao.tipo.duracao_min)
+            try:
+                servicos.remarcar(
+                    sessao=sessao, inicio=inicio, fim=fim, equipamento=dados["equipamento"], usuario=usuario
+                )
+            except ValidationError as exc:
+                form.add_error(None, exc.message)
+            else:
+                messages.success(request, "Sessão remarcada com sucesso.")
+                return redirect("agenda:detalhe", pk=sessao.pk)
+    else:
+        inicio_local = timezone.localtime(sessao.inicio)
+        form = RemararForm(
+            initial={
+                "data": inicio_local.date(),
+                "hora_inicio": inicio_local.time(),
+                "equipamento": sessao.equipamento_id,
+            }
+        )
+
+    return render(request, "agenda/remarcar.html", {"form": form, "sessao": sessao, "aba": "agenda"})
 

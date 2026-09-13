@@ -12,4 +12,7 @@ urlpatterns = [
     path("ano/", calendario.ano, name="ano"),
     path("agendar/", views.agendar, name="agendar"),
     path("<int:pk>/cancelar/", views.cancelar, name="cancelar"),
+    path("<int:pk>/status/", views.status, name="status"),
+    path("<int:pk>/remarcar/", views.remarcar, name="remarcar"),
+    path("<int:pk>/", views.detalhe, name="detalhe"),
 ]

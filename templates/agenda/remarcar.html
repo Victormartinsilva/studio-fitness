@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Remarcar sessão — Studio Fitness{% endblock %}
+{% block content %}
+<div class="linha-titulo">
+    <h1>Remarcar sessão de {{ sessao.aluno }}</h1>
+    <a class="btn btn-secundario btn-sm" href="{% url 'agenda:detalhe' sessao.pk %}">‹ Voltar</a>
+</div>
+
+<div class="card" style="max-width:560px">
+    <form method="post" class="form">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="alerta critico" style="margin-bottom:12px">
+            {% for erro in form.non_field_errors %}<span style="font-weight:600;font-size:14px">{{ erro }}</span>{% endfor %}
+            <span class="detalhe">Escolha outro horário ou equipamento.</span>
+        </div>
+        {% endif %}
+        <div class="form-2col">
+            <p>{{ form.data.label_tag }}{{ form.data }}{{ form.data.errors }}</p>
+            <p>{{ form.hora_inicio.label_tag }}{{ form.hora_inicio }}{{ form.hora_inicio.errors }}</p>
+        </div>
+        <p>{{ form.equipamento.label_tag }}{{ form.equipamento }}{{ form.equipamento.errors }}</p>
+        <p class="sub" style="margin:0 0 12px">A duração continua a mesma do tipo de sessão ({{ sessao.tipo.duracao_min }} min).</p>
+        <div class="acoes-form">
+            <button type="submit" class="btn">Remarcar</button>
+            <a class="btn btn-secundario" href="{% url 'agenda:detalhe' sessao.pk %}">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

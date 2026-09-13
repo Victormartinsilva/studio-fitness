@@ -1148,3 +1148,257 @@ class PrivacidadeGradeAlunoTests(TestCase):
 
         self.assertContains(response, "Mariana Silva")
         self.assertContains(response, "Felipe Souza")
+
+
+class MarcarStatusServicoTests(TestCase):
+    """`servicos.marcar_status`: setter simples com auditoria, sem validar
+    transições de estado."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45)
+        usuario = Usuario.objects.create_user("bia", papel=Usuario.Papel.PROFESSOR)
+        self.professor = Professor.objects.create(usuario=usuario)
+        self.professor.tipos_habilitados.add(self.tipo)
+        self.aluno = Aluno.objects.create(nome="Mariana")
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+        self.sessao = servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento, inicio=_horario(dia=0, hora=10),
+            fim=_horario(dia=0, hora=10) + timedelta(minutes=self.tipo.duracao_min),
+        )
+
+    def test_muda_status_e_registra_evento(self):
+        servicos.marcar_status(sessao=self.sessao, status=Sessao.Status.REALIZADA, usuario=self.professor.usuario)
+
+        self.sessao.refresh_from_db()
+        self.assertEqual(self.sessao.status, Sessao.Status.REALIZADA)
+        evento = self.sessao.eventos.latest("criado_em")
+        self.assertEqual(evento.acao, "status:realizada")
+        self.assertEqual(evento.usuario, self.professor.usuario)
+
+    def test_rejeita_status_invalido(self):
+        with self.assertRaises(ValidationError):
+            servicos.marcar_status(sessao=self.sessao, status="nao-existe")
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class StatusViewTests(TestCase):
+    """`agenda:status` — muda o status de uma sessão via POST, respeitando a
+    mesma regra de permissão de `cancelar` (gestor, superuser ou o
+    professor dono da sessão)."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45)
+        self.usuario_gestor = Usuario.objects.create_user(
+            "gestor3", password="teste12345", papel=Usuario.Papel.GESTOR
+        )
+        usuario_prof = Usuario.objects.create_user("biaS", password="teste12345", papel=Usuario.Papel.PROFESSOR)
+        self.professor = Professor.objects.create(usuario=usuario_prof)
+        self.professor.tipos_habilitados.add(self.tipo)
+        usuario_outro_prof = Usuario.objects.create_user(
+            "leoS", password="teste12345", papel=Usuario.Papel.PROFESSOR
+        )
+        self.outro_professor = Professor.objects.create(usuario=usuario_outro_prof)
+        self.usuario_aluno = Usuario.objects.create_user(
+            "marianaS", password="teste12345", papel=Usuario.Papel.ALUNO
+        )
+        self.aluno = Aluno.objects.create(nome="Mariana", usuario=self.usuario_aluno)
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+        inicio = _horario(dia=0, hora=10)
+        self.sessao = servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento, inicio=inicio, fim=inicio + timedelta(minutes=self.tipo.duracao_min),
+        )
+        self.url = reverse("agenda:status", args=[self.sessao.pk])
+
+    def test_professor_dono_marca_realizada_com_sucesso(self):
+        self.client.force_login(self.professor.usuario)
+
+        response = self.client.post(self.url, {"status": "realizada"})
+
+        self.sessao.refresh_from_db()
+        self.assertEqual(self.sessao.status, Sessao.Status.REALIZADA)
+        self.assertRedirects(response, reverse("agenda:detalhe", args=[self.sessao.pk]))
+        evento = self.sessao.eventos.latest("criado_em")
+        self.assertEqual(evento.acao, "status:realizada")
+
+    def test_professor_dono_marca_faltou_com_sucesso(self):
+        self.client.force_login(self.professor.usuario)
+
+        response = self.client.post(self.url, {"status": "faltou"})
+
+        self.sessao.refresh_from_db()
+        self.assertEqual(self.sessao.status, Sessao.Status.FALTOU)
+        self.assertRedirects(response, reverse("agenda:detalhe", args=[self.sessao.pk]))
+
+    def test_professor_que_nao_e_dono_recebe_403(self):
+        self.client.force_login(self.outro_professor.usuario)
+
+        response = self.client.post(self.url, {"status": "realizada"})
+
+        self.assertEqual(response.status_code, 403)
+        self.sessao.refresh_from_db()
+        self.assertEqual(self.sessao.status, Sessao.Status.AGENDADA)
+
+    def test_aluno_recebe_403_mesmo_na_propria_sessao(self):
+        self.client.force_login(self.usuario_aluno)
+
+        response = self.client.post(self.url, {"status": "realizada"})
+
+        self.assertEqual(response.status_code, 403)
+        self.sessao.refresh_from_db()
+        self.assertEqual(self.sessao.status, Sessao.Status.AGENDADA)
+
+    def test_gestor_pode_mudar_status_de_qualquer_sessao(self):
+        self.client.force_login(self.usuario_gestor)
+
+        response = self.client.post(self.url, {"status": "confirmada"})
+
+        self.sessao.refresh_from_db()
+        self.assertEqual(self.sessao.status, Sessao.Status.CONFIRMADA)
+        self.assertRedirects(response, reverse("agenda:detalhe", args=[self.sessao.pk]))
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class RemararViewTests(TestCase):
+    """`agenda:remarcar` — formulário sem JS para remarcar data/hora/
+    equipamento de uma sessão existente."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45, preparo_min=10, troca_min=10)
+        usuario_prof = Usuario.objects.create_user("biaR", password="teste12345", papel=Usuario.Papel.PROFESSOR)
+        self.professor = Professor.objects.create(usuario=usuario_prof)
+        self.professor.tipos_habilitados.add(self.tipo)
+        self.aluno = Aluno.objects.create(nome="Mariana")
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+        self.inicio = _horario(dia=0, hora=10)
+        self.fim = self.inicio + timedelta(minutes=self.tipo.duracao_min)
+        self.sessao = servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento, inicio=self.inicio, fim=self.fim,
+        )
+        self.url = reverse("agenda:remarcar", args=[self.sessao.pk])
+
+    def test_horario_valido_remarca_com_sucesso(self):
+        self.client.force_login(self.professor.usuario)
+        novo_inicio = self.inicio + timedelta(hours=2)
+
+        response = self.client.post(
+            self.url,
+            {
+                "data": novo_inicio.date().isoformat(),
+                "hora_inicio": novo_inicio.time().strftime("%H:%M"),
+                "equipamento": self.equipamento.id,
+            },
+        )
+
+        self.assertRedirects(response, reverse("agenda:detalhe", args=[self.sessao.pk]))
+        self.sessao.refresh_from_db()
+        self.assertEqual(self.sessao.inicio, novo_inicio)
+
+    def test_horario_em_conflito_mantem_sessao_e_reexibe_erro(self):
+        # Outra sessão já ocupa o professor às 14h no mesmo dia.
+        outro_aluno = Aluno.objects.create(nome="Felipe")
+        outro_equipamento = Equipamento.objects.create(nome="Equip. 02")
+        conflito_inicio = self.inicio + timedelta(hours=4)
+        servicos.agendar(
+            professor=self.professor, aluno=outro_aluno, tipo=self.tipo,
+            equipamento=outro_equipamento, inicio=conflito_inicio,
+            fim=conflito_inicio + timedelta(minutes=self.tipo.duracao_min),
+        )
+        self.client.force_login(self.professor.usuario)
+
+        response = self.client.post(
+            self.url,
+            {
+                "data": conflito_inicio.date().isoformat(),
+                "hora_inicio": conflito_inicio.time().strftime("%H:%M"),
+                "equipamento": self.equipamento.id,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "já tem outra sessão")
+        sessao_no_banco = Sessao.objects.get(pk=self.sessao.pk)
+        self.assertEqual(sessao_no_banco.inicio, self.inicio)
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class DetalheViewTests(TestCase):
+    """`agenda:detalhe` — página de fallback sem JS: dados da sessão +
+    ações (quando o usuário pode gerenciar) respeitando a mesma regra de
+    privacidade (LGPD) já aplicada na grade."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45)
+        self.usuario_gestor = Usuario.objects.create_user(
+            "gestorD", password="teste12345", papel=Usuario.Papel.GESTOR
+        )
+        usuario_prof = Usuario.objects.create_user("biaD", password="teste12345", papel=Usuario.Papel.PROFESSOR)
+        self.professor = Professor.objects.create(usuario=usuario_prof)
+        self.professor.tipos_habilitados.add(self.tipo)
+        self.usuario_aluno = Usuario.objects.create_user(
+            "marianaD", password="teste12345", papel=Usuario.Papel.ALUNO
+        )
+        self.aluno = Aluno.objects.create(nome="Mariana", telefone="(11) 98888-7777", usuario=self.usuario_aluno)
+        self.usuario_outro_aluno = Usuario.objects.create_user(
+            "felipeD", password="teste12345", papel=Usuario.Papel.ALUNO
+        )
+        self.outro_aluno = Aluno.objects.create(nome="Felipe", usuario=self.usuario_outro_aluno)
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+        inicio = _horario(dia=0, hora=10)
+        self.sessao = servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento, inicio=inicio, fim=inicio + timedelta(minutes=self.tipo.duracao_min),
+        )
+        self.url = reverse("agenda:detalhe", args=[self.sessao.pk])
+
+    def test_aluno_dono_ve_dados_sem_botoes_de_acao_nem_whatsapp(self):
+        self.client.force_login(self.usuario_aluno)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Mariana")
+        self.assertNotContains(response, "Realizada</button>")
+        self.assertNotContains(response, "wa.me")
+
+    def test_aluno_de_outra_sessao_recebe_403(self):
+        self.client.force_login(self.usuario_outro_aluno)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_professor_dono_ve_botoes_de_acao_e_link_whatsapp(self):
+        self.client.force_login(self.professor.usuario)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Realizada</button>")
+        self.assertContains(response, "https://wa.me/5511988887777")
+
+    def test_gestor_ve_botoes_de_acao_e_link_whatsapp(self):
+        self.client.force_login(self.usuario_gestor)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Realizada</button>")
+        self.assertContains(response, "https://wa.me/5511988887777")
