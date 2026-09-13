@@ -307,6 +307,60 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
 .professores-picker[open] summary::after { content: " \25B4"; }
 .professores-picker .linha-professores { margin: 6px 0 0; }
 
+/* ---------- agenda: alterna Linha do tempo / Grade por equipamento
+   (Etapa 2d) ---------- */
+/* Padrão mobile-first (sem media query): a linha do tempo (`.linha-tempo`)
+   é a visão padrão no celular; a grade por equipamento
+   (`.grade-equipamento-wrapper`) fica escondida até o breakpoint desktop
+   (`@media (min-width: 900px)` mais abaixo, onde o padrão se inverte).
+   `.forcar-lista`/`.forcar-grade` no container pai `.visao-agenda` (toggle
+   manual via `?visao=lista`/`?visao=grade`) vencem esse comportamento
+   automático em QUALQUER tela — mesmo padrão de override com
+   `!important` que `.legenda summary`/`.legenda .legenda-conteudo` já
+   usam mais abaixo pra vencer o comportamento nativo do `<details>`. */
+.grade-equipamento-wrapper { display: none; }
+.visao-agenda.forcar-lista .linha-tempo { display: flex !important; }
+.visao-agenda.forcar-lista .grade-equipamento-wrapper { display: none !important; }
+.visao-agenda.forcar-grade .linha-tempo { display: none !important; }
+.visao-agenda.forcar-grade .grade-equipamento-wrapper { display: block !important; }
+
+/* ---------- agenda: cartões de sessão e separadores "livre" da linha do
+   tempo ---------- */
+.linha-tempo { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.cartao-sessao {
+  display: flex; align-items: flex-start; gap: 12px;
+  text-decoration: none; color: var(--ink); cursor: pointer;
+}
+.cartao-sessao .cartao-hora {
+  flex: none; min-width: 88px; font-family: "Outfit", sans-serif;
+  font-weight: 700; font-size: 14px; color: var(--roxo);
+}
+.cartao-sessao .cartao-corpo { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cartao-sessao .cartao-titulo { font-weight: 600; }
+.cartao-sessao .cartao-subtitulo { font-size: 12px; color: var(--ink-3); }
+.cartao-sessao .cartao-equip { font-size: 11px; color: var(--ink-4); }
+.cartao-sessao.ocupado { background: #f2eef5; cursor: default; }
+.cartao-sessao.ocupado .cartao-hora { color: var(--ink-3); }
+.cartao-sessao.ocupado .cartao-titulo { color: var(--ink-3); font-weight: 500; }
+.cartao-sessao.status-faltou .cartao-hora { color: var(--ambar); }
+.cartao-sessao.status-cancelada { opacity: .6; }
+.separador-livre {
+  display: flex; align-items: center; justify-content: center; width: 100%;
+  min-height: 40px; padding: 6px 12px;
+  border: 1px dashed var(--verde); border-radius: var(--r-md);
+  background: var(--verde-fundo); color: var(--verde-texto);
+  font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.separador-livre:hover { background: var(--verde); color: #17300a; border-style: solid; }
+
+/* ---------- agenda: toggle Linha do tempo / Grade (Etapa 2d) ---------- */
+.toggle-visao { display: flex; gap: 6px; margin-bottom: 12px; }
+.toggle-visao a {
+  padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  color: var(--ink-3); background: var(--superficie); border: 1px solid var(--borda-forte);
+}
+.toggle-visao a.ativo { background: var(--roxo); border-color: var(--roxo); color: #fff; }
+
 /* ---------- agenda: cabeçalhos dos equipamentos (linha própria, fora da
    grade rolável) ---------- */
 /* Antes o cabeçalho (`.cabeca`) vivia dentro de `.grade .colunas`, com
@@ -794,6 +848,12 @@ dialog.modal-cartao[open] {
      estado (aberto/fechado) do `<details>`. */
   .legenda summary { display: none; }
   .legenda .legenda-conteudo { display: flex !important; }
+  /* Desktop: inverte o padrão mobile-first da Etapa 2d — grade por
+     equipamento visível, linha do tempo escondida (a menos que
+     `.forcar-lista` vença via `!important`, ver regra logo acima no
+     arquivo). */
+  .linha-tempo { display: none; }
+  .grade-equipamento-wrapper { display: block; }
   /* Desktop: vaga a vaga (slot de 30min) em vez do bloco consolidado do
      mobile — tem espaço de sobra pra não precisar do bottom sheet. */
   .grade .bloco.livre-slot { display: flex; }

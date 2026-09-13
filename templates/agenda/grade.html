@@ -26,6 +26,11 @@
 
 {% include "agenda/_abas_visao.html" with visao="dia" %}
 
+<div class="toggle-visao">
+    <a href="?data={{ data|date:'Y-m-d' }}{% if filtro_professor_ativo %}&professor={{ request.GET.professor }}{% endif %}&visao=lista#dia-atual" class="{% if visao_forcada == 'lista' %}ativo{% endif %}">Linha do tempo</a>
+    <a href="?data={{ data|date:'Y-m-d' }}{% if filtro_professor_ativo %}&professor={{ request.GET.professor }}{% endif %}&visao=grade#dia-atual" class="{% if visao_forcada == 'grade' %}ativo{% endif %}">Grade</a>
+</div>
+
 <div class="faixa-dias" style="margin-bottom:12px">
     {% for dia in faixa_dias %}
     <a href="?data={{ dia.data|date:'Y-m-d' }}#dia-atual" {% if dia.selecionado %}id="dia-atual" class="hoje"{% endif %}>
@@ -52,6 +57,91 @@
 {% endif %}
 
 
+<div class="visao-agenda {% if visao_forcada == 'grade' %}forcar-grade{% elif visao_forcada == 'lista' %}forcar-lista{% endif %}">
+<div class="linha-tempo">
+    {% for item in linha_tempo %}
+    {% if item.tipo == 'sessao' %}
+        {% if item.sessao_id %}
+        <a href="{% url 'agenda:detalhe' item.sessao_id %}" class="card cartao-sessao status-{{ item.sessao.status }}" data-abre-dialog="folha-tempo-sessao-{{ item.sessao_id }}">
+            <div class="cartao-hora">{{ item.hora_inicio }}–{{ item.hora_fim }}</div>
+            <div class="cartao-corpo">
+                <div class="cartao-titulo">{{ item.titulo }}</div>
+                {% if item.subtitulo %}<div class="cartao-subtitulo">{{ item.subtitulo }}</div>{% endif %}
+                <div class="cartao-equip">{{ item.equipamento.nome }}</div>
+            </div>
+        </a>
+        <dialog id="folha-tempo-sessao-{{ item.sessao_id }}" class="folha-inferior">
+            <div class="folha-cabecalho">
+                <h3>{{ item.titulo }}</h3>
+                <button type="button" class="folha-fechar" aria-label="Fechar">&times;</button>
+            </div>
+            <div class="folha-conteudo">
+                {% if item.subtitulo %}<p>{{ item.subtitulo }}</p>{% endif %}
+                <p>
+                    <strong>Status:</strong>
+                    <span class="tag {% if item.sessao.status == 'confirmada' or item.sessao.status == 'realizada' %}ok{% elif item.sessao.status == 'faltou' %}aviso{% endif %}">{{ item.sessao.get_status_display }}</span>
+                </p>
+                {% if item.pode_gerenciar %}
+                <div class="acoes-form">
+                    <form method="post" action="{% url 'agenda:status' item.sessao_id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="realizada">
+                        <button type="submit" class="btn">Realizada</button>
+                    </form>
+                    <form method="post" action="{% url 'agenda:status' item.sessao_id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="faltou">
+                        <button type="submit" class="btn btn-secundario">Faltou</button>
+                    </form>
+                    <a class="btn btn-secundario" href="{% url 'agenda:remarcar' item.sessao_id %}">Remarcar</a>
+                </div>
+                <form method="post" action="{% url 'agenda:cancelar' item.sessao_id %}" class="form" onsubmit="return confirm('Cancelar esta sessão?');">
+                    {% csrf_token %}
+                    <p>
+                        <label for="justificativa-tempo-{{ item.sessao_id }}">Justificativa do cancelamento (opcional)</label>
+                        <textarea id="justificativa-tempo-{{ item.sessao_id }}" name="justificativa" rows="3"></textarea>
+                    </p>
+                    <button type="submit" class="btn-perigo">Cancelar sessão</button>
+                </form>
+                {% else %}
+                <p><a class="btn btn-secundario btn-sm" href="{% url 'agenda:detalhe' item.sessao_id %}">Ver mais</a></p>
+                {% endif %}
+                {% if item.link_whatsapp %}
+                <p><a class="btn btn-secundario btn-sm" href="{{ item.link_whatsapp }}" target="_blank" rel="noopener">Falar no WhatsApp</a></p>
+                {% endif %}
+            </div>
+        </dialog>
+        {% else %}
+        <div class="card cartao-sessao ocupado">
+            <div class="cartao-hora">{{ item.hora_inicio }}–{{ item.hora_fim }}</div>
+            <div class="cartao-corpo">
+                <div class="cartao-titulo">{{ item.titulo }}</div>
+            </div>
+        </div>
+        {% endif %}
+    {% else %}
+    <button type="button" class="separador-livre" data-abre-dialog="folha-livre-{{ forloop.counter0 }}">Livre {{ item.inicio_texto }}–{{ item.fim_texto }} · {{ item.qtd_equipamentos }} equipamento{{ item.qtd_equipamentos|pluralize }}</button>
+    <dialog id="folha-livre-{{ forloop.counter0 }}" class="folha-inferior">
+        <div class="folha-cabecalho">
+            <h3>Livre {{ item.inicio_texto }}–{{ item.fim_texto }}</h3>
+            <button type="button" class="folha-fechar" aria-label="Fechar">&times;</button>
+        </div>
+        <div class="folha-conteudo">
+            {% for grupo in item.grupos %}
+            <p class="rotulo">{{ grupo.equipamento.nome }}</p>
+            {% for s in grupo.slots %}
+            <a class="btn btn-secundario btn-bloco" href="{{ s.href }}">{{ s.titulo }}</a>
+            {% endfor %}
+            {% endfor %}
+        </div>
+    </dialog>
+    {% endif %}
+    {% empty %}
+    <p class="vazio">Nenhuma sessão nem horário livre neste dia.</p>
+    {% endfor %}
+</div>
+
+<div class="grade-equipamento-wrapper">
 <div class="grade-cabecas">
     <div class="grade-cabecas-espaco"></div>
     <div class="grade-cabecas-lista" id="grade-cabecas-lista">
@@ -160,6 +250,8 @@
         <div class="vazio" style="flex:1">Nenhum equipamento cadastrado.</div>
         {% endfor %}
     </div>
+</div>
+</div>
 </div>
 
 <details class="legenda">

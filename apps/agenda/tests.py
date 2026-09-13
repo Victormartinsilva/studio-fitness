@@ -1519,3 +1519,175 @@ class DetalheViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Realizada</button>")
         self.assertContains(response, "https://wa.me/5511988887777")
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class LinhaTempoContextoTests(TestCase):
+    """Etapa 2d: a grade ganha uma segunda visão (linha do tempo) na MESMA
+    página/URL (`agenda:grade`) — lista cronológica de cartões de sessão e
+    separadores "livre", calculada por sweep-line sobre os limites de
+    RESERVA (preparo/sessão/troca) do dia."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45)
+        self.gestor = Usuario.objects.create_user(
+            "gestorLT", password="teste12345", papel=Usuario.Papel.GESTOR
+        )
+        usuario_prof = Usuario.objects.create_user("biaLT", password="teste12345", papel=Usuario.Papel.PROFESSOR)
+        self.professor = Professor.objects.create(usuario=usuario_prof)
+        self.professor.tipos_habilitados.add(self.tipo)
+        self.aluno = Aluno.objects.create(nome="Mariana Silva")
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+        self.dia = timezone.localdate() + timedelta(days=1)
+        inicio = timezone.make_aware(datetime.combine(self.dia, datetime.min.time()) + timedelta(hours=10))
+        self.sessao = servicos.agendar(
+            professor=self.professor, aluno=self.aluno, tipo=self.tipo,
+            equipamento=self.equipamento, inicio=inicio, fim=inicio + timedelta(minutes=self.tipo.duracao_min),
+        )
+        self.url = reverse("agenda:grade") + f"?data={self.dia.isoformat()}"
+
+    def test_linha_tempo_no_contexto_com_item_de_sessao(self):
+        self.client.force_login(self.gestor)
+
+        response = self.client.get(self.url)
+
+        linha_tempo = response.context["linha_tempo"]
+        itens_sessao = [item for item in linha_tempo if item["tipo"] == "sessao"]
+        self.assertEqual(len(itens_sessao), 1)
+        self.assertEqual(itens_sessao[0]["sessao_id"], self.sessao.pk)
+        self.assertEqual(itens_sessao[0]["titulo"], "Mariana Silva")
+
+    def test_intervalos_livres_antes_e_depois_da_sessao(self):
+        self.client.force_login(self.gestor)
+
+        response = self.client.get(self.url)
+
+        linha_tempo = response.context["linha_tempo"]
+        itens_livres = [item for item in linha_tempo if item["tipo"] == "livre"]
+        # Único equipamento cadastrado: livre entre a abertura (07:00) e o
+        # início da reserva da sessão (10:00, sem preparo), e de novo entre
+        # o fim da reserva (10:45, sem troca) e o fechamento (21:00).
+        self.assertEqual(len(itens_livres), 2)
+        antes, depois = itens_livres
+        self.assertEqual(antes["inicio_texto"], "07:00")
+        self.assertEqual(antes["fim_texto"], "10:00")
+        self.assertEqual(antes["qtd_equipamentos"], 1)
+        self.assertEqual(depois["inicio_texto"], "10:45")
+        self.assertEqual(depois["fim_texto"], "21:00")
+        self.assertEqual(depois["qtd_equipamentos"], 1)
+
+    def test_separador_livre_aparece_no_html_com_singular_correto(self):
+        self.client.force_login(self.gestor)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Livre 07:00–10:00 · 1 equipamento")
+        self.assertNotContains(response, "1 equipamentos")
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class LinhaTempoPrivacidadeTests(TestCase):
+    """Privacidade (LGPD) na linha do tempo: aluno logado não pode ver nome
+    de outro aluno — mesma regra já testada pros blocos da grade
+    (`PrivacidadeGradeAlunoTests`), agora também no contexto/HTML da linha
+    do tempo."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45)
+        usuario_professor = Usuario.objects.create_user(
+            "biaLT2", password="teste12345", papel=Usuario.Papel.PROFESSOR
+        )
+        self.professor = Professor.objects.create(usuario=usuario_professor)
+        self.professor.tipos_habilitados.add(self.tipo)
+
+        self.usuario_aluno_a = Usuario.objects.create_user(
+            "marianaLT2", password="teste12345", papel=Usuario.Papel.ALUNO
+        )
+        self.aluno_a = Aluno.objects.create(nome="Mariana Silva", usuario=self.usuario_aluno_a)
+        self.usuario_aluno_b = Usuario.objects.create_user(
+            "felipeLT2", password="teste12345", papel=Usuario.Papel.ALUNO
+        )
+        self.aluno_b = Aluno.objects.create(nome="Felipe Souza", usuario=self.usuario_aluno_b)
+
+        self.equipamento_a = Equipamento.objects.create(nome="Equip. 01")
+        self.equipamento_b = Equipamento.objects.create(nome="Equip. 02")
+        self.dia = timezone.localdate() + timedelta(days=1)
+
+    def _agenda(self, aluno, hora, equipamento):
+        inicio = timezone.make_aware(
+            datetime.combine(self.dia, datetime.min.time()) + timedelta(hours=hora)
+        )
+        fim = inicio + timedelta(minutes=self.tipo.duracao_min)
+        return servicos.agendar(
+            professor=self.professor, aluno=aluno, tipo=self.tipo,
+            equipamento=equipamento, inicio=inicio, fim=fim,
+        )
+
+    def test_aluno_ve_ocupado_no_lugar_do_nome_de_outro_aluno_na_linha_do_tempo(self):
+        self._agenda(self.aluno_a, hora=10, equipamento=self.equipamento_a)
+        self._agenda(self.aluno_b, hora=14, equipamento=self.equipamento_b)
+        self.client.force_login(self.usuario_aluno_a)
+
+        url = reverse("agenda:grade") + f"?data={self.dia.isoformat()}"
+        response = self.client.get(url)
+
+        linha_tempo = response.context["linha_tempo"]
+        itens_sessao = [item for item in linha_tempo if item["tipo"] == "sessao"]
+        titulos = [item["titulo"] for item in itens_sessao]
+        self.assertIn("Mariana Silva", titulos)
+        self.assertIn("Ocupado", titulos)
+        self.assertNotIn("Felipe Souza", titulos)
+        item_ocupado = next(item for item in itens_sessao if item["titulo"] == "Ocupado")
+        self.assertNotIn("sessao_id", item_ocupado)
+        self.assertContains(response, "Ocupado")
+        self.assertNotContains(response, "Felipe Souza")
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class VisaoForcadaTests(TestCase):
+    """`?visao=lista`/`?visao=grade` (toggle manual "Linha do tempo /
+    Grade" da Etapa 2d) mudam o contexto `visao_forcada`; qualquer outro
+    valor, ou ausência do parâmetro, deixa a escolha padrão por tela a
+    cargo do CSS (`None`)."""
+
+    def setUp(self):
+        usuario = Usuario.objects.create_user("gestorVF", password="teste12345", papel=Usuario.Papel.GESTOR)
+        self.client.force_login(usuario)
+        self.url = reverse("agenda:grade")
+
+    def test_sem_parametro_visao_forcada_e_none(self):
+        response = self.client.get(self.url)
+
+        self.assertIsNone(response.context["visao_forcada"])
+
+    def test_visao_lista(self):
+        response = self.client.get(self.url + "?visao=lista")
+
+        self.assertEqual(response.context["visao_forcada"], "lista")
+        self.assertContains(response, "forcar-lista")
+
+    def test_visao_grade(self):
+        response = self.client.get(self.url + "?visao=grade")
+
+        self.assertEqual(response.context["visao_forcada"], "grade")
+        self.assertContains(response, "forcar-grade")
+
+    def test_valor_invalido_cai_no_automatico(self):
+        response = self.client.get(self.url + "?visao=outra-coisa")
+
+        self.assertIsNone(response.context["visao_forcada"])

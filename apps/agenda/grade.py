@@ -224,6 +224,131 @@ def _vagas_consolidadas(ocupados, dia, equipamento_id, agora, professor_id=None,
     return consolidadas
 
 
+def _cartao_sessao(usuario, sessao, aluno_logado):
+    """Item "sessao" da linha do tempo (Etapa 2d): mesma regra de
+    privacidade (LGPD) e os mesmos dados de ação (`sessao_id`,
+    `pode_gerenciar`, link do WhatsApp) já usados pelos blocos de sessão
+    da grade por equipamento (ver `grade()`) — só reformatados como
+    cartão de lista em vez de bloco posicionado em pixel."""
+    eh_sessao_de_outro_aluno = aluno_logado is not None and sessao.aluno_id != aluno_logado.id
+    if eh_sessao_de_outro_aluno:
+        return {
+            "tipo": "sessao",
+            "hora_inicio": "{:%H:%M}".format(timezone.localtime(sessao.inicio)),
+            "hora_fim": "{:%H:%M}".format(timezone.localtime(sessao.fim)),
+            "titulo": "Ocupado",
+            "subtitulo": "",
+            "equipamento": sessao.equipamento,
+        }
+
+    cartao = {
+        "tipo": "sessao",
+        "hora_inicio": "{:%H:%M}".format(timezone.localtime(sessao.inicio)),
+        "hora_fim": "{:%H:%M}".format(timezone.localtime(sessao.fim)),
+        "titulo": str(sessao.aluno),
+        "subtitulo": "{} · {}".format(sessao.professor, sessao.tipo),
+        "equipamento": sessao.equipamento,
+        "sessao": sessao,
+        "sessao_id": sessao.pk,
+    }
+    pode_gerenciar = _pode_gerenciar_sessao(usuario, sessao)
+    cartao["pode_gerenciar"] = pode_gerenciar
+    if pode_gerenciar:
+        digitos = _digitos(sessao.aluno.telefone)
+        cartao["link_whatsapp"] = f"https://wa.me/55{digitos}" if digitos else None
+    return cartao
+
+
+def _separadores_livres(sessoes, bloqueios, equipamentos_ativos, dia, agora, professor_id, janelas_disponibilidade):
+    """Separadores "Livre HH:MM–HH:MM · N equipamentos" da linha do tempo
+    (Etapa 2d).
+
+    Sweep-line sobre os limites de RESERVA de cada sessão (não o horário
+    da sessão em si — a reserva já inclui preparo/troca) e de cada
+    bloqueio do dia: os pontos de corte (mais início/fim do expediente)
+    dividem o dia em segmentos; para cada segmento, conta quantos
+    equipamentos ATIVOS não têm nenhuma reserva sobrepondo aquele
+    intervalo inteiro (mesma checagem de sobreposição de
+    `motor._periodos_se_sobrepoem`, aqui em minutos-desde-a-abertura em
+    vez de datetimes — a função não se importa com o tipo, só compara
+    com `<`). Segmentos com contagem zero, ou mais curtos que `SLOT_MIN`,
+    não geram separador."""
+    limite = (HORA_FIM - HORA_INICIO) * 60
+    ocupacoes = {}
+    for sessao in sessoes:
+        ocupacoes.setdefault(sessao.equipamento_id, []).append(
+            (_minutos(sessao.reserva_inicio, dia), _minutos(sessao.reserva_fim, dia))
+        )
+    for bloqueio in bloqueios:
+        ocupacoes.setdefault(bloqueio.equipamento_id, []).append(
+            (_minutos(bloqueio.inicio, dia), _minutos(bloqueio.fim, dia))
+        )
+
+    pontos = {0, limite}
+    for intervalos in ocupacoes.values():
+        for inicio_min, fim_min in intervalos:
+            pontos.add(max(0, min(inicio_min, limite)))
+            pontos.add(max(0, min(fim_min, limite)))
+    pontos = sorted(pontos)
+
+    segmentos = [(pontos[i], pontos[i + 1]) for i in range(len(pontos) - 1) if pontos[i] < pontos[i + 1]]
+    # Restringe os segmentos à disponibilidade cadastrada do professor
+    # logado ANTES de contar equipamentos livres — um intervalo fora da
+    # disponibilidade dele nem entra na contagem, mesma regra já aplicada
+    # às vagas por equipamento (`_vagas_consolidadas`).
+    segmentos = _intersecta_com_disponibilidade(segmentos, janelas_disponibilidade)
+
+    separadores = []
+    for inicio_seg, fim_seg in segmentos:
+        if fim_seg - inicio_seg < SLOT_MIN:
+            continue
+        equipamentos_livres = [
+            equipamento
+            for equipamento in equipamentos_ativos
+            if not any(
+                motor._periodos_se_sobrepoem(inicio_seg, fim_seg, oc_inicio, oc_fim)
+                for oc_inicio, oc_fim in ocupacoes.get(equipamento.id, [])
+            )
+        ]
+        if not equipamentos_livres:
+            continue
+        hh_inicio, mm_inicio = divmod(HORA_INICIO * 60 + inicio_seg, 60)
+        hh_fim, mm_fim = divmod(HORA_INICIO * 60 + fim_seg, 60)
+        grupos = [
+            {
+                "equipamento": equipamento,
+                "slots": _slots_do_gap(inicio_seg, fim_seg, dia, equipamento.id, agora, professor_id),
+            }
+            for equipamento in equipamentos_livres
+        ]
+        separadores.append(
+            {
+                "tipo": "livre",
+                "inicio_min": inicio_seg,
+                "inicio_texto": "{:02d}:{:02d}".format(hh_inicio, mm_inicio),
+                "fim_texto": "{:02d}:{:02d}".format(hh_fim, mm_fim),
+                "qtd_equipamentos": len(equipamentos_livres),
+                "grupos": grupos,
+            }
+        )
+    return separadores
+
+
+def _montar_linha_tempo(usuario, sessoes, bloqueios, equipamentos, dia, agora, professor_id, aluno_logado, janelas_disponibilidade):
+    """Lista única, em ordem cronológica, de cartões de sessão e
+    separadores "livre" intercalados — a visão "Linha do tempo" da
+    Etapa 2d (alternativa mobile-first à grade por equipamento)."""
+    equipamentos_ativos = [e for e in equipamentos if e.status == Equipamento.Status.ATIVO]
+    separadores = _separadores_livres(
+        sessoes, bloqueios, equipamentos_ativos, dia, agora, professor_id, janelas_disponibilidade
+    )
+
+    itens = [(_minutos(sessao.inicio, dia), _cartao_sessao(usuario, sessao, aluno_logado)) for sessao in sessoes]
+    itens += [(separador["inicio_min"], separador) for separador in separadores]
+    itens.sort(key=lambda item: item[0])
+    return [item[1] for item in itens]
+
+
 @login_required
 def grade(request):
     hoje = timezone.localdate()
@@ -293,6 +418,21 @@ def grade(request):
     # cálculo mais caro de resumo_do_dia, que aqui só serve pra
     # `linha_professores` (via `por_professor`).
     resumo = motor.resumo_do_dia(dia, incluir_proxima_vaga=False)
+
+    # Linha do tempo (Etapa 2d): visão alternativa, mobile-first, da mesma
+    # `sessoes`/`bloqueios`/`equipamentos` já carregados acima — reaproveita
+    # os mesmos dados, sem requery.
+    linha_tempo = _montar_linha_tempo(
+        request.user, sessoes, bloqueios, equipamentos, dia, agora,
+        professor_logado.id if professor_logado is not None else None,
+        aluno_logado, janelas_disponibilidade,
+    )
+
+    # Toggle manual "Linha do tempo / Grade" (`?visao=lista`/`?visao=grade`):
+    # qualquer outro valor (ou ausência do parâmetro) deixa a escolha padrão
+    # por tela a cargo do CSS (mobile = linha do tempo, desktop = grade).
+    visao_param = request.GET.get("visao")
+    visao_forcada = visao_param if visao_param in ("lista", "grade") else None
 
     # Menor `inicio_min` entre todas as sessões/bloqueios do dia, em todas as
     # colunas — usado como posição de fallback pro auto-scroll inicial (item
@@ -486,5 +626,7 @@ def grade(request):
             "pode_agendar": pode_agendar,
             "mostrar_legenda_propria": professor_destaque_id is not None,
             "filtro_professor_ativo": filtro_professor_ativo,
+            "linha_tempo": linha_tempo,
+            "visao_forcada": visao_forcada,
         },
     )
