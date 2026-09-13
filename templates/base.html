@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
     {% block estilos %}{% endblock %}
 </head>
-<body>
+<body class="{% block classe_corpo %}{% endblock %}">
     <header class="topbar">
         <a class="marca" href="{% url 'painel:home' %}">
             <img src="{% static 'img/logo.png' %}" alt="Studio Fitness">

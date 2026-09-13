@@ -68,6 +68,75 @@
       });
     });
 
+    // ---- FAB da agenda (Etapa 2e): a opção "Perguntar ao assistente"
+    // (`.fab-abre-assistente`) não abre painel nenhum por conta própria —
+    // ela só dispara um clique programático no botão original do
+    // assistente (`#assistente-botao`, escondido visualmente só nesta
+    // página via CSS, ver `.pagina-agenda .assistente-botao` em app.css),
+    // reaproveitando 100% a lógica de abrir/fechar já existente em
+    // `assistente.js`. Também fecha o `<details class="fab-agenda">` pra
+    // não deixar o menu aberto por cima do painel/página.
+    const fabAgenda = document.querySelector(".fab-agenda");
+    document.querySelectorAll(".fab-abre-assistente").forEach(function (opcao) {
+      opcao.addEventListener("click", function () {
+        if (fabAgenda) {
+          fabAgenda.open = false;
+        }
+        document.getElementById("assistente-botao")?.click();
+      });
+    });
+
+    // ---- Swipe horizontal na linha do tempo (Etapa 2e): arrastar pra
+    // esquerda/direita na lista vertical de sessões (`.linha-tempo`) troca
+    // de dia, como um atalho a mais além dos links ‹/› do cabeçalho. Só
+    // aqui — nunca em `.grade .colunas` nem `.faixa-dias`, que já têm
+    // scroll horizontal próprio (arrastar ali precisa continuar rolando as
+    // colunas/dias, não trocar de dia). Passivo e sem `preventDefault` em
+    // nenhum momento, pra não brigar com o scroll vertical nativo da
+    // página. `data-dia-anterior`/`data-dia-seguinte` (ISO, ex. "2026-09-11")
+    // vêm do próprio elemento, preenchidos pelo template com os mesmos dias
+    // já usados nos links ‹/› do cabeçalho.
+    const linhaTempo = document.querySelector(".linha-tempo");
+    if (linhaTempo) {
+      let toqueInicioX = null;
+      let toqueInicioY = null;
+
+      linhaTempo.addEventListener(
+        "touchstart",
+        function (evento) {
+          const toque = evento.touches[0];
+          toqueInicioX = toque.clientX;
+          toqueInicioY = toque.clientY;
+        },
+        { passive: true }
+      );
+
+      linhaTempo.addEventListener(
+        "touchend",
+        function (evento) {
+          if (toqueInicioX === null) {
+            return;
+          }
+          const toque = evento.changedTouches[0];
+          const deltaX = toque.clientX - toqueInicioX;
+          const deltaY = toque.clientY - toqueInicioY;
+          toqueInicioX = null;
+          toqueInicioY = null;
+
+          const LIMIAR_PX = 60;
+          if (Math.abs(deltaX) < LIMIAR_PX || Math.abs(deltaX) <= Math.abs(deltaY)) {
+            return;
+          }
+
+          const dia = deltaX > 0 ? linhaTempo.dataset.diaAnterior : linhaTempo.dataset.diaSeguinte;
+          if (dia) {
+            window.location.href = "?data=" + dia + "#dia-atual";
+          }
+        },
+        { passive: true }
+      );
+    }
+
     // ---- Auto-scroll ao abrir a página: rola até a "linha do agora" ou,
     // na falta dela, o primeiro horário ocupado do dia (`grade.py` calcula
     // os dois em `linha_agora_top`/`scroll_inicial_top` e expõe via

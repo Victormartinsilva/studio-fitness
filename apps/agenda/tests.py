@@ -505,13 +505,24 @@ class GradeChromeCompactoTests(TestCase):
         self.client.force_login(usuario)
         self.url = reverse("agenda:grade")
 
-    def test_cabecalho_mantem_lista_e_agendar(self):
+    def test_cabecalho_mantem_lista_mas_agendar_foi_para_o_fab(self):
         response = self.client.get(self.url)
+        conteudo = response.content.decode()
 
         self.assertContains(response, "Lista")
-        self.assertContains(response, "Agendar sessão")
         self.assertContains(response, reverse("agenda:minhas_sessoes"))
+
+        # "Agendar sessão" saiu do cabeçalho (Etapa 2e: virou a opção
+        # "Agendar" do FAB da agenda) — mas o link em si continua existindo
+        # na página, só que fora de `.linha-titulo`.
+        inicio_titulo = conteudo.index('class="linha-titulo"')
+        fim_titulo = conteudo.index("</div>", inicio_titulo)
+        bloco_titulo = conteudo[inicio_titulo:fim_titulo]
+        self.assertNotIn("Agendar sessão", bloco_titulo)
+        self.assertNotIn(reverse("agenda:agendar"), bloco_titulo)
+
         self.assertContains(response, reverse("agenda:agendar"))
+        self.assertContains(response, "Agendar")
 
     def test_abas_de_visao_presentes(self):
         response = self.client.get(self.url)
@@ -527,6 +538,86 @@ class GradeChromeCompactoTests(TestCase):
         self.assertContains(response, "<summary>Legenda</summary>")
         self.assertContains(response, "Preparo / troca do equipamento")
         self.assertContains(response, "Bloqueio")
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class FabAgendaTests(TestCase):
+    """Etapa 2e: FAB único da agenda (substitui o botão do assistente +
+    "+ Agendar sessão" do cabeçalho) e o swipe horizontal da linha do
+    tempo."""
+
+    def setUp(self):
+        usuario = Usuario.objects.create_user("bia3", password="teste12345", papel=Usuario.Papel.PROFESSOR)
+        self.professor = Professor.objects.create(usuario=usuario)
+        self.client.force_login(usuario)
+        self.url = reverse("agenda:grade")
+
+    @override_settings(ASSISTENTE_ATIVO=True)
+    def test_fab_contem_opcao_agendar_quando_pode_agendar(self):
+        response = self.client.get(self.url)
+
+        self.assertContains(response, 'class="fab-agenda"')
+        self.assertContains(response, "fab-opcoes")
+        self.assertContains(response, "Agendar")
+        self.assertContains(response, reverse("agenda:agendar"))
+
+    @override_settings(ASSISTENTE_ATIVO=False)
+    def test_fab_nao_aparece_sem_pode_agendar_e_sem_assistente(self):
+        usuario_aluno = Usuario.objects.create_user(
+            "marifab", password="teste12345", papel=Usuario.Papel.ALUNO
+        )
+        Aluno.objects.create(nome="Mari Fab", usuario=usuario_aluno)
+        self.client.force_login(usuario_aluno)
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, 'class="fab-agenda"')
+
+    @override_settings(ASSISTENTE_ATIVO=True)
+    def test_aluno_sem_pode_agendar_ve_so_a_opcao_do_assistente_no_fab(self):
+        usuario_aluno = Usuario.objects.create_user(
+            "marifab2", password="teste12345", papel=Usuario.Papel.ALUNO
+        )
+        Aluno.objects.create(nome="Mari Fab 2", usuario=usuario_aluno)
+        self.client.force_login(usuario_aluno)
+
+        response = self.client.get(self.url)
+        conteudo = response.content.decode()
+
+        self.assertContains(response, 'class="fab-agenda"')
+        self.assertContains(response, "fab-abre-assistente")
+        self.assertContains(response, "Perguntar ao assistente")
+
+        # A opção "Agendar" não deve existir dentro do FAB pra quem não
+        # pode agendar (aluno).
+        inicio_fab = conteudo.index('class="fab-agenda"')
+        self.assertNotIn(reverse("agenda:agendar"), conteudo[inicio_fab:])
+
+    def test_dia_anterior_e_seguinte_expostos_via_data_attr_para_o_swipe(self):
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "data-dia-anterior=")
+        self.assertContains(response, "data-dia-seguinte=")
+        self.assertEqual(
+            response.context["dia_anterior"].strftime("%Y-%m-%d"),
+            self._extrair_data_attr(response.content.decode(), "data-dia-anterior"),
+        )
+        self.assertEqual(
+            response.context["dia_seguinte"].strftime("%Y-%m-%d"),
+            self._extrair_data_attr(response.content.decode(), "data-dia-seguinte"),
+        )
+
+    @staticmethod
+    def _extrair_data_attr(conteudo, nome_attr):
+        marcador = nome_attr + '="'
+        inicio = conteudo.index(marcador) + len(marcador)
+        fim = conteudo.index('"', inicio)
+        return conteudo[inicio:fim]
 
 
 class VagasLivresAlturaMinimaTests(TestCase):

@@ -96,6 +96,18 @@ a:hover { color: var(--verde); }
 
 /* ---------- conteúdo ---------- */
 main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(safe-area-inset-bottom)); }
+/* Etapa 2e: só na página da agenda (`<body class="pagina-agenda">`), o
+   `main` precisa de mais espaço embaixo — o FAB novo (`.fab-agenda`, mais
+   abaixo) pode abrir um menu com até 2 opções empilhadas por cima do
+   conteúdo, bem mais alto que o botão redondo isolado que ele substitui.
+   Conta (mobile): 62px (`.tabs`) + 14px (gap do `.fab-agenda`) + 52px
+   (botão) + 10px (gap do `.fab-opcoes`) + 96px (2 opções de ~44px + 8px de
+   gap) = 234px até o topo do menu aberto, com folga arredondado pra 250px —
+   suficiente pra não esconder a última coluna da grade nem a legenda atrás
+   do menu, mesmo aberto. Escopado só a esta página pra não crescer o
+   respiro inferior de todas as outras (onde só existe o botão isolado do
+   assistente, já coberto pelo padding padrão de 78px/48px). */
+.pagina-agenda main { padding-bottom: calc(250px + env(safe-area-inset-bottom)); }
 .linha-titulo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
 .linha-titulo h1 { margin: 0; }
 .linha-titulo .espaco { flex: 1; }
@@ -728,6 +740,17 @@ dialog.modal-cartao[open] {
 }
 .assistente-botao:hover { background: #5a2170; }
 
+/* Etapa 2e: na página da agenda, o FAB próprio (`.fab-agenda`, mais abaixo)
+   assume o papel do botão flutuante padrão do assistente — ter os dois ao
+   mesmo tempo, empilhados no mesmo canto, seria confuso. `grade.html`
+   marca `<body class="pagina-agenda">` via o bloco `classe_corpo` (ver
+   `base.html`); o painel do chat (`#assistente-painel`) continua existindo
+   e funcionando normalmente, só o botão redondo original some visualmente
+   — a opção "Perguntar ao assistente" do FAB novo dispara um clique
+   programático nele (`agenda.js`), reaproveitando 100% a lógica de
+   abrir/fechar já existente em `assistente.js`. */
+.pagina-agenda .assistente-botao { display: none; }
+
 .assistente-painel {
   position: fixed; inset: 0; z-index: 33;
   background: var(--superficie);
@@ -800,6 +823,42 @@ dialog.modal-cartao[open] {
 }
 .assistente-form button { flex: none; }
 
+/* ---------- FAB da agenda (Etapa 2e) ---------- */
+/* Substitui, só na página da agenda, os dois controles flutuantes que
+   competiam ali (botão do assistente + "+ Agendar sessão" do cabeçalho) por
+   um único FAB "+" que expande pra duas opções. Mesmo padrão zero-JS de
+   `.calendario-picker`/`.professores-picker`/`.legenda`: `<details>` sem
+   nenhum JS pra abrir/fechar o menu em si (só a opção "Perguntar ao
+   assistente" precisa de um clique programático, ver `agenda.js`).
+   Posição igual à do `.assistente-botao` que substitui (mesmos valores de
+   `bottom`/`right`/z-index). */
+.fab-agenda { position: fixed; right: 16px; z-index: 32; bottom: calc(62px + env(safe-area-inset-bottom) + 14px); }
+.fab-agenda summary {
+  list-style: none; width: 52px; height: 52px; border-radius: 50%;
+  background: var(--roxo); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; line-height: 1; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(46,18,56,.28);
+}
+.fab-agenda summary::-webkit-details-marker { display: none; }
+.fab-agenda summary:hover, .fab-agenda[open] summary { background: #5a2170; }
+/* Gira o "+" pra virar um "x" visual quando o menu está aberto — só
+   decorativo, sem custo de JS. */
+.fab-agenda[open] summary span { display: inline-block; transform: rotate(45deg); }
+.fab-opcoes {
+  position: absolute; right: 0; bottom: calc(52px + 10px);
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+}
+.fab-opcao {
+  display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+  background: var(--superficie); color: var(--ink);
+  border: 1px solid var(--borda-forte); border-radius: 999px;
+  padding: 11px 18px; font: inherit; font-size: 14px; font-weight: 500;
+  cursor: pointer; box-shadow: 0 4px 14px rgba(46,18,56,.18);
+  min-height: 44px; /* alvo de toque */
+}
+.fab-opcao:hover { border-color: var(--roxo); color: var(--roxo); }
+
 /* ---------- desktop ---------- */
 @media (min-width: 900px) {
   .topbar { height: 62px; padding: 0 24px; gap: 20px; }
@@ -808,6 +867,11 @@ dialog.modal-cartao[open] {
   .usuario .nome { display: inline; }
   .tabs { display: none; }
   main { padding: 22px 24px 48px; }
+  /* Mesmo raciocínio do padding mobile acima (ver comentário junto da regra
+     `main` base), com os valores de posição do `.fab-agenda` no desktop
+     (bottom 24px em vez de calc(62px+14px)): 24px + 52px (botão) + 10px +
+     96px (2 opções) = 182px até o topo do menu aberto, com folga. */
+  .pagina-agenda main { padding-bottom: 200px; }
   h1 { font-size: 28px; }
   .item { flex-wrap: nowrap; }
   .item .acoes { flex: none; justify-content: flex-start; padding-top: 0; }
@@ -842,6 +906,7 @@ dialog.modal-cartao[open] {
     box-shadow: 0 20px 60px rgba(36,16,44,.28);
   }
   .assistente-form { padding-bottom: 12px; }
+  .fab-agenda { bottom: 24px; }
   /* Legenda sempre visível no desktop, como já era antes de virar
      `<details>` (ver comentário acima, na regra `.legenda summary`): some
      o "Legenda ▾" clicável e força o conteúdo a aparecer, ignorando o

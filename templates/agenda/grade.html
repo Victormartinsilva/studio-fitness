@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Agenda — Studio Fitness{% endblock %}
+{% block classe_corpo %}pagina-agenda{% endblock %}
 {% block content %}
 <div class="linha-titulo">
     <details class="calendario-picker">
@@ -17,11 +18,6 @@
     <a class="btn btn-secundario btn-sm btn-lista" href="{% url 'agenda:minhas_sessoes' %}" aria-label="Lista">
         <span class="icone-btn" aria-hidden="true">📋</span><span class="texto-btn">Lista</span>
     </a>
-    {% if pode_agendar %}
-    <a class="btn btn-sm btn-agendar" href="{% url 'agenda:agendar' %}?data={{ data|date:'Y-m-d' }}" aria-label="Agendar sessão">
-        <span class="icone-btn" aria-hidden="true">＋</span><span class="texto-btn">+ Agendar sessão</span>
-    </a>
-    {% endif %}
 </div>
 
 {% include "agenda/_abas_visao.html" with visao="dia" %}
@@ -58,7 +54,7 @@
 
 
 <div class="visao-agenda {% if visao_forcada == 'grade' %}forcar-grade{% elif visao_forcada == 'lista' %}forcar-lista{% endif %}">
-<div class="linha-tempo">
+<div class="linha-tempo" data-dia-anterior="{{ dia_anterior|date:'Y-m-d' }}" data-dia-seguinte="{{ dia_seguinte|date:'Y-m-d' }}">
     {% for item in linha_tempo %}
     {% if item.tipo == 'sessao' %}
         {% if item.sessao_id %}
@@ -272,6 +268,26 @@
         {% if pode_agendar %}<span class="item-legenda"><i class="livre"></i>Horário livre — clique para agendar</span>{% endif %}
     </div>
 </details>
+
+{% if pode_agendar or assistente_ativo %}
+<details class="fab-agenda">
+    <summary aria-label="Abrir opções">
+        <span aria-hidden="true">＋</span>
+    </summary>
+    <div class="fab-opcoes">
+        {% if pode_agendar %}
+        <a class="fab-opcao" href="{% url 'agenda:agendar' %}?data={{ data|date:'Y-m-d' }}">
+            <span aria-hidden="true">📅</span> Agendar
+        </a>
+        {% endif %}
+        {% if assistente_ativo %}
+        <button type="button" class="fab-opcao fab-abre-assistente">
+            <span aria-hidden="true">💬</span> Perguntar ao assistente
+        </button>
+        {% endif %}
+    </div>
+</details>
+{% endif %}
 
 <script src="{% static 'js/agenda.js' %}" defer></script>
 {% endblock %}
