@@ -84,10 +84,17 @@
                 <button type="button" class="bloco livre livre-consolidada" style="top:{{ vc.top }}px;height:{{ vc.altura }}px" data-abre-dialog="{{ vc.id }}">{{ vc.titulo }}</button>
                 {% endfor %}
                 {% for b in coluna.blocos %}
+                {% if b.sessao_id %}
+                <a href="{% url 'agenda:detalhe' b.sessao_id %}" class="bloco {{ b.classe }}" style="top:{{ b.top }}px;height:{{ b.altura }}px" data-abre-dialog="folha-sessao-{{ b.sessao_id }}">
+                    {% if b.titulo %}<div class="quem">{{ b.titulo }}</div>{% endif %}
+                    {% if b.subtitulo %}<div class="quem2">{{ b.subtitulo }}</div>{% endif %}
+                </a>
+                {% else %}
                 <div class="bloco {{ b.classe }}" style="top:{{ b.top }}px;height:{{ b.altura }}px">
                     {% if b.titulo %}<div class="quem">{{ b.titulo }}</div>{% endif %}
                     {% if b.subtitulo %}<div class="quem2">{{ b.subtitulo }}</div>{% endif %}
                 </div>
+                {% endif %}
                 {% endfor %}
             </div>
             {% for vc in coluna.vagas_consolidadas %}
@@ -102,6 +109,51 @@
                     {% endfor %}
                 </div>
             </dialog>
+            {% endfor %}
+            {% for b in coluna.blocos %}
+            {% if b.sessao_id %}
+            <dialog id="folha-sessao-{{ b.sessao_id }}" class="folha-inferior">
+                <div class="folha-cabecalho">
+                    <h3>{{ b.titulo }}</h3>
+                    <button type="button" class="folha-fechar" aria-label="Fechar">&times;</button>
+                </div>
+                <div class="folha-conteudo">
+                    {% if b.subtitulo %}<p>{{ b.subtitulo }}</p>{% endif %}
+                    <p>
+                        <strong>Status:</strong>
+                        <span class="tag {% if b.sessao.status == 'confirmada' or b.sessao.status == 'realizada' %}ok{% elif b.sessao.status == 'faltou' %}aviso{% endif %}">{{ b.sessao.get_status_display }}</span>
+                    </p>
+                    {% if b.pode_gerenciar %}
+                    <div class="acoes-form">
+                        <form method="post" action="{% url 'agenda:status' b.sessao_id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="status" value="realizada">
+                            <button type="submit" class="btn">Realizada</button>
+                        </form>
+                        <form method="post" action="{% url 'agenda:status' b.sessao_id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="status" value="faltou">
+                            <button type="submit" class="btn btn-secundario">Faltou</button>
+                        </form>
+                        <a class="btn btn-secundario" href="{% url 'agenda:remarcar' b.sessao_id %}">Remarcar</a>
+                    </div>
+                    <form method="post" action="{% url 'agenda:cancelar' b.sessao_id %}" class="form" onsubmit="return confirm('Cancelar esta sessão?');">
+                        {% csrf_token %}
+                        <p>
+                            <label for="justificativa-{{ b.sessao_id }}">Justificativa do cancelamento (opcional)</label>
+                            <textarea id="justificativa-{{ b.sessao_id }}" name="justificativa" rows="3"></textarea>
+                        </p>
+                        <button type="submit" class="btn-perigo">Cancelar sessão</button>
+                    </form>
+                    {% else %}
+                    <p><a class="btn btn-secundario btn-sm" href="{% url 'agenda:detalhe' b.sessao_id %}">Ver mais</a></p>
+                    {% endif %}
+                    {% if b.link_whatsapp %}
+                    <p><a class="btn btn-secundario btn-sm" href="{{ b.link_whatsapp }}" target="_blank" rel="noopener">Falar no WhatsApp</a></p>
+                    {% endif %}
+                </div>
+            </dialog>
+            {% endif %}
             {% endfor %}
         </div>
         {% empty %}

@@ -1,4 +1,3 @@
-import re
 from datetime import datetime, timedelta
 
 from django.contrib import messages
@@ -12,24 +11,7 @@ from django.views.decorators.http import require_POST
 from . import motor, servicos
 from .forms import AgendarForm, RemararForm
 from .models import Sessao
-
-
-def _pode_gerenciar_sessao(usuario, sessao):
-    """Mesma regra de permissão usada por `cancelar` desde a etapa
-    anterior: só gestor, superuser ou o professor DONO da sessão podem
-    mudar status, remarcar ou cancelar. Reaproveitada por `status`,
-    `remarcar` e `detalhe` (para decidir se mostra os botões de ação)."""
-    return (
-        usuario.is_superuser
-        or usuario.is_gestor
-        or (usuario.is_professor and hasattr(usuario, "professor") and sessao.professor_id == usuario.professor.id)
-    )
-
-
-def _digitos(texto):
-    """Extrai só os dígitos de um telefone cadastrado (remove espaços,
-    parênteses, traços etc.), para montar o link `https://wa.me/55...`."""
-    return re.sub(r"\D", "", texto or "")
+from .permissoes import _digitos, _pode_gerenciar_sessao
 
 
 @login_required

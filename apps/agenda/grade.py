@@ -15,6 +15,7 @@ from apps.cadastros.models import Equipamento
 
 from . import expediente, motor
 from .models import BloqueioEquipamento, Sessao
+from .permissoes import _digitos, _pode_gerenciar_sessao
 
 HORA_INICIO = expediente.ABERTURA_HORA  # primeira hora exibida
 HORA_FIM = expediente.FECHAMENTO_HORA   # última hora exibida (exclusiva)
@@ -326,18 +327,33 @@ def grade(request):
                     timezone.localtime(sessao.inicio), timezone.localtime(sessao.fim), sessao.aluno
                 )
                 subtitulo_sessao = "{} · {}".format(sessao.professor, sessao.tipo)
-            blocos.append(
-                _bloco(
-                    classe_sessao,
-                    sessao.inicio,
-                    sessao.fim,
-                    dia,
-                    titulo=titulo_sessao,
-                    subtitulo=subtitulo_sessao,
-                    inset_topo=not tem_preparo,
-                    inset_base=not tem_troca,
-                )
+            bloco_sessao = _bloco(
+                classe_sessao,
+                sessao.inicio,
+                sessao.fim,
+                dia,
+                titulo=titulo_sessao,
+                subtitulo=subtitulo_sessao,
+                inset_topo=not tem_preparo,
+                inset_base=not tem_troca,
             )
+            # Dados de ação do bottom sheet (Etapa 2c-ii): só quando a
+            # sessão NÃO é o caso "Ocupado" de outro aluno — privacidade
+            # (LGPD) já aplicada acima continua valendo, o bloco "Ocupado"
+            # não ganha `sessao_id` nem nenhuma informação de ação.
+            if not eh_sessao_de_outro_aluno:
+                bloco_sessao["sessao_id"] = sessao.pk
+                # Objeto completo, pro bottom sheet montar o resumo (status,
+                # professor, tipo, equipamento) sem precisar duplicar cada
+                # campo em chave separada — mesmo padrão de acesso que
+                # `templates/agenda/detalhe.html` já usa via `sessao.*`.
+                bloco_sessao["sessao"] = sessao
+                pode_gerenciar = _pode_gerenciar_sessao(request.user, sessao)
+                bloco_sessao["pode_gerenciar"] = pode_gerenciar
+                if pode_gerenciar:
+                    digitos = _digitos(sessao.aluno.telefone)
+                    bloco_sessao["link_whatsapp"] = f"https://wa.me/55{digitos}" if digitos else None
+            blocos.append(bloco_sessao)
         for bloqueio in bloqueios:
             if bloqueio.equipamento_id != equipamento.id:
                 continue

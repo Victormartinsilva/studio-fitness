@@ -30,18 +30,27 @@
       );
     }
 
-    // ---- Bottom sheets das vagas consolidadas (mobile): cada bloco
-    // "Livre HH:MM–HH:MM" (`.livre-consolidada`, só visível no mobile via
-    // CSS) abre o `<dialog class="folha-inferior">` correspondente, já
-    // renderizado pelo servidor com os horários daquele intervalo — nada
-    // de montar conteúdo dinamicamente em JS. Fecha no botão "×" ou
-    // clicando fora (no ::backdrop, truque padrão de `<dialog>`: o clique
-    // no backdrop chega com `target` sendo o próprio elemento `<dialog>`).
-    document.querySelectorAll("[data-abre-dialog]").forEach(function (botao) {
-      botao.addEventListener("click", function () {
-        const alvo = document.getElementById(botao.dataset.abreDialog);
+    // ---- Bottom sheets das vagas consolidadas (mobile) e dos blocos de
+    // sessão (Etapa 2c-ii): cada gatilho com `data-abre-dialog` abre o
+    // `<dialog class="folha-inferior">` correspondente, já renderizado
+    // pelo servidor — nada de montar conteúdo dinamicamente em JS. Fecha
+    // no botão "×" ou clicando fora (no ::backdrop, truque padrão de
+    // `<dialog>`: o clique no backdrop chega com `target` sendo o próprio
+    // elemento `<dialog>`).
+    //
+    // O gatilho é um `<button type="button">` (vagas consolidadas, não
+    // navega) OU um `<a href="...">` (blocos de sessão — link de fallback
+    // pra página de detalhe sem JS). `preventDefault()` só é chamado
+    // DEPOIS de confirmar que o dialog existe e `showModal()` funcionou:
+    // inofensivo pro `<button>` (que não navega de qualquer forma) e
+    // essencial pro `<a>`, mas sem impedir a navegação de fallback se o
+    // dialog não existir ou `showModal()` falhar por algum motivo.
+    document.querySelectorAll("[data-abre-dialog]").forEach(function (gatilho) {
+      gatilho.addEventListener("click", function (evento) {
+        const alvo = document.getElementById(gatilho.dataset.abreDialog);
         if (alvo && typeof alvo.showModal === "function") {
           alvo.showModal();
+          evento.preventDefault();
         }
       });
     });

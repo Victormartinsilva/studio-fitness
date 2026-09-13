@@ -376,6 +376,16 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px calc(78px + env(saf
   position: absolute; left: 5px; right: 5px; overflow: hidden;
   border-radius: 6px; padding: 5px 8px;
 }
+/* Blocos de sessão (Etapa 2c-ii) agora são `<a>` (fallback sem JS pra
+   `agenda:detalhe`, JS abre o bottom sheet em vez de navegar) — herdam o
+   visual de `.bloco.sessao`/`.bloco.bloqueio` normalmente (classes, não a
+   tag, definem a aparência); cursor de link já vem de graça do UA
+   stylesheet (`<a href>`), só falta o anel de foco visível pra navegação
+   por teclado, que os `<div>` de preparo/troca/bloqueio (sem link) não
+   precisam. */
+.grade .bloco:focus-visible {
+  outline: 2px solid var(--roxo); outline-offset: 2px;
+}
 .grade .bloco.sessao, .grade .bloco.sessao.propria {
   background: var(--roxo); color: #fff; border: 1px solid #4d1c60;
 }

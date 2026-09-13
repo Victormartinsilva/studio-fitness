@@ -1150,6 +1150,123 @@ class PrivacidadeGradeAlunoTests(TestCase):
         self.assertContains(response, "Felipe Souza")
 
 
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class GradeAcoesSessaoTests(TestCase):
+    """Etapa 2c-ii: bloco de sessão da grade vira link (`data-abre-dialog`)
+    que abre um bottom sheet com os detalhes + ações rápidas, reaproveitando
+    os endpoints `agenda:status`/`agenda:remarcar`/`agenda:cancelar` já
+    testados via `detalhe.html`. Continua respeitando as mesmas regras de
+    permissão (`_pode_gerenciar_sessao`) e de privacidade (LGPD) já
+    testadas em `StatusViewTests`/`PrivacidadeGradeAlunoTests`."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45)
+        usuario_prof = Usuario.objects.create_user(
+            "biaG", password="teste12345", papel=Usuario.Papel.PROFESSOR
+        )
+        self.professor = Professor.objects.create(usuario=usuario_prof)
+        self.professor.tipos_habilitados.add(self.tipo)
+        usuario_outro_prof = Usuario.objects.create_user(
+            "leoG", password="teste12345", papel=Usuario.Papel.PROFESSOR
+        )
+        self.outro_professor = Professor.objects.create(usuario=usuario_outro_prof)
+
+        self.usuario_aluno_a = Usuario.objects.create_user(
+            "marianaG", password="teste12345", papel=Usuario.Papel.ALUNO
+        )
+        self.aluno_a = Aluno.objects.create(nome="Mariana Silva", usuario=self.usuario_aluno_a)
+        self.usuario_aluno_b = Usuario.objects.create_user(
+            "felipeG", password="teste12345", papel=Usuario.Papel.ALUNO
+        )
+        self.aluno_b = Aluno.objects.create(nome="Felipe Souza", usuario=self.usuario_aluno_b)
+
+        self.equipamento_a = Equipamento.objects.create(nome="Equip. 01")
+        self.equipamento_b = Equipamento.objects.create(nome="Equip. 02")
+        self.dia = timezone.localdate() + timedelta(days=1)
+
+        self.sessao_a = self._agenda(self.professor, self.aluno_a, hora=10, equipamento=self.equipamento_a)
+        self.sessao_b = self._agenda(self.professor, self.aluno_b, hora=14, equipamento=self.equipamento_b)
+        self.url = reverse("agenda:grade") + f"?data={self.dia.isoformat()}"
+
+    def _agenda(self, professor, aluno, hora, equipamento):
+        inicio = timezone.make_aware(
+            datetime.combine(self.dia, datetime.min.time()) + timedelta(hours=hora)
+        )
+        fim = inicio + timedelta(minutes=self.tipo.duracao_min)
+        return servicos.agendar(
+            professor=professor, aluno=aluno, tipo=self.tipo,
+            equipamento=equipamento, inicio=inicio, fim=fim,
+        )
+
+    def test_professor_dono_ve_dialog_com_botoes_de_acao(self):
+        self.client.force_login(self.professor.usuario)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        dialog_id = f"folha-sessao-{self.sessao_a.pk}"
+        self.assertContains(response, f'data-abre-dialog="{dialog_id}"')
+        self.assertContains(response, f'id="{dialog_id}"')
+        self.assertContains(response, reverse("agenda:status", args=[self.sessao_a.pk]))
+        self.assertContains(response, reverse("agenda:remarcar", args=[self.sessao_a.pk]))
+        self.assertContains(response, reverse("agenda:cancelar", args=[self.sessao_a.pk]))
+
+    def test_gestor_ve_dialog_com_botoes_de_acao(self):
+        usuario_gestor = Usuario.objects.create_user(
+            "gestorG", password="teste12345", papel=Usuario.Papel.GESTOR
+        )
+        self.client.force_login(usuario_gestor)
+
+        response = self.client.get(self.url)
+
+        dialog_id = f"folha-sessao-{self.sessao_a.pk}"
+        self.assertContains(response, f'data-abre-dialog="{dialog_id}"')
+        self.assertContains(response, reverse("agenda:status", args=[self.sessao_a.pk]))
+
+    def test_professor_que_nao_e_dono_ve_dialog_sem_botoes_de_acao(self):
+        self.client.force_login(self.outro_professor.usuario)
+
+        response = self.client.get(self.url)
+
+        dialog_id = f"folha-sessao-{self.sessao_a.pk}"
+        # Pode ver o link/dialog (professor vê qualquer sessão)...
+        self.assertContains(response, f'data-abre-dialog="{dialog_id}"')
+        self.assertContains(response, f'id="{dialog_id}"')
+        # ...mas sem os botões de ação, restritos ao professor dono.
+        self.assertNotContains(response, reverse("agenda:status", args=[self.sessao_a.pk]))
+        self.assertNotContains(response, reverse("agenda:remarcar", args=[self.sessao_a.pk]))
+        self.assertNotContains(response, reverse("agenda:cancelar", args=[self.sessao_a.pk]))
+
+    def test_bloco_ocupado_de_outro_aluno_continua_sem_link_nem_dialog(self):
+        self.client.force_login(self.usuario_aluno_a)
+
+        response = self.client.get(self.url)
+
+        # Privacidade (LGPD): a sessão do aluno B aparece só como "Ocupado",
+        # sem `sessao_id` nenhum anexado — logo sem `data-abre-dialog` nem
+        # `<dialog>` correspondente no HTML.
+        dialog_id_b = f"folha-sessao-{self.sessao_b.pk}"
+        self.assertContains(response, "Ocupado")
+        self.assertNotContains(response, f'data-abre-dialog="{dialog_id_b}"')
+        self.assertNotContains(response, f'id="{dialog_id_b}"')
+        # A própria sessão do aluno A continua com link/dialog normalmente.
+        dialog_id_a = f"folha-sessao-{self.sessao_a.pk}"
+        self.assertContains(response, f'data-abre-dialog="{dialog_id_a}"')
+
+    def test_pagina_renderiza_sem_erro_com_sessao_presente(self):
+        self.client.force_login(self.professor.usuario)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Mariana Silva")
+
+
 class MarcarStatusServicoTests(TestCase):
     """`servicos.marcar_status`: setter simples com auditoria, sem validar
     transições de estado."""
