@@ -83,3 +83,31 @@ class MeusAlunosTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 302)
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class AlunoFormAtributosMobileTests(TestCase):
+    """Etapa 3a: telefone/e-mail/nome do cadastro de aluno precisam ter
+    `type`/`autocomplete` corretos para o teclado/preenchimento automático
+    do celular (uso principal do app)."""
+
+    def setUp(self):
+        self.gestor = Usuario.objects.create_user(
+            "gestorCad", password="teste12345", papel=Usuario.Papel.GESTOR
+        )
+        self.client.force_login(self.gestor)
+
+    def test_campos_do_formulario_de_novo_aluno_tem_atributos_de_teclado_mobile(self):
+        response = self.client.get(reverse("cadastros:alunos") + "?novo=1")
+        conteudo = response.content.decode()
+
+        self.assertIn('autocomplete="name"', conteudo)
+        self.assertIn('type="tel"', conteudo)
+        self.assertIn('autocomplete="tel"', conteudo)
+        self.assertIn('type="email"', conteudo)
+        self.assertIn('autocomplete="email"', conteudo)

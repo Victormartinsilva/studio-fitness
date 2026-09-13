@@ -68,6 +68,50 @@
       });
     });
 
+    // ---- Busca de aluno sem <select> nativo (Etapa 3a, formulário de
+    // agendar): o campo real do form (`AgendarForm.aluno`) continua sendo
+    // um `ModelChoiceField` normal por baixo — só a aparência muda. O
+    // servidor renderiza `#id_aluno` como `<input type="hidden">` e
+    // `#lista-alunos` como uma `<datalist>` com todos os alunos ativos
+    // (`<option value="Nome" data-id="123">`); `#busca-aluno` é o
+    // `<input type="text">` visível que o usuário digita/filtra (o próprio
+    // navegador filtra as opções da datalist, sem fetch nenhum). Não existe
+    // evento nativo "selecionou da datalist" em JS puro — detectamos a
+    // seleção comparando o texto digitado com o `value` exato de alguma
+    // `<option>` e copiamos o `data-id` correspondente pro hidden. Se não
+    // bater com nada (ainda digitando, ou nome inválido), o hidden fica
+    // vazio, e a validação do `ModelChoiceField` falha do mesmo jeito que já
+    // falha hoje pra um campo obrigatório vazio.
+    const buscaAluno = document.getElementById("busca-aluno");
+    const listaAlunos = document.getElementById("lista-alunos");
+    const alunoValor = document.getElementById("id_aluno");
+    if (buscaAluno && listaAlunos && alunoValor) {
+      const opcoes = Array.from(listaAlunos.options);
+
+      // Reabrindo o formulário já com um aluno definido (vaga clicada com
+      // `?aluno=<id>` na grade, ou reexibição após erro de validação do
+      // agendamento): o hidden já vem preenchido com o ID pelo servidor,
+      // mas o input de busca visível começa vazio — preenche o nome
+      // correspondente procurando a option com esse `data-id`.
+      if (alunoValor.value) {
+        const opcaoAtual = opcoes.find(function (opcao) {
+          return opcao.dataset.id === alunoValor.value;
+        });
+        if (opcaoAtual) {
+          buscaAluno.value = opcaoAtual.value;
+        }
+      }
+
+      const sincronizarComABusca = function () {
+        const opcaoSelecionada = opcoes.find(function (opcao) {
+          return opcao.value === buscaAluno.value;
+        });
+        alunoValor.value = opcaoSelecionada ? opcaoSelecionada.dataset.id : "";
+      };
+      buscaAluno.addEventListener("input", sincronizarComABusca);
+      buscaAluno.addEventListener("change", sincronizarComABusca);
+    }
+
     // ---- FAB da agenda (Etapa 2e): a opção "Perguntar ao assistente"
     // (`.fab-abre-assistente`) não abre painel nenhum por conta própria —
     // ela só dispara um clique programático no botão original do

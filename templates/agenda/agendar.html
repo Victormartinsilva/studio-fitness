@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Agendar sessão — Studio Fitness{% endblock %}
 {% block content %}
 <div class="linha-titulo">
@@ -17,7 +18,17 @@
         {% endif %}
         <p>{{ form.tipo.label_tag }}{{ form.tipo }}{% if form.tipo.errors %}{{ form.tipo.errors }}{% endif %}</p>
         <div class="form-2col">
-            <p>{{ form.aluno.label_tag }}{{ form.aluno }}{{ form.aluno.errors }}</p>
+            <p>
+                <label for="busca-aluno">Aluno</label>
+                <input type="text" id="busca-aluno" list="lista-alunos" placeholder="Digite o nome do aluno" autocomplete="off" required>
+                <datalist id="lista-alunos">
+                    {% for aluno in alunos_ativos %}
+                    <option value="{{ aluno.nome }}" data-id="{{ aluno.pk }}"></option>
+                    {% endfor %}
+                </datalist>
+                {{ form.aluno }}
+                {{ form.aluno.errors }}
+            </p>
             <p>{{ form.professor.label_tag }}{{ form.professor }}{{ form.professor.errors }}</p>
             <p>{{ form.data.label_tag }}{{ form.data }}{{ form.data.errors }}</p>
             <p>{{ form.hora_inicio.label_tag }}{{ form.hora_inicio }}{{ form.hora_inicio.errors }}</p>
@@ -45,4 +56,6 @@
     </div>
 </div>
 {% endif %}
+
+<script src="{% static 'js/agenda.js' %}" defer></script>
 {% endblock %}

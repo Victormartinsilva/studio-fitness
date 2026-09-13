@@ -8,6 +8,8 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from apps.cadastros.models import Aluno
+
 from . import motor, servicos
 from .forms import AgendarForm, RemararForm
 from .models import Sessao
@@ -73,18 +75,31 @@ def agendar(request):
                 messages.success(request, "Sessão agendada com sucesso.")
                 return redirect("agenda:minhas_sessoes")
     else:
+        professor_inicial = request.GET.get("professor")
+        if not professor_inicial and request.user.is_professor and hasattr(request.user, "professor"):
+            # Formulário aberto "em branco" (FAB/"+ Agendar sessão", sem vaga
+            # clicada): pré-seleciona o próprio professor logado. Um
+            # `professor=` explícito na URL (vaga clicada na grade, possivelmente
+            # de outro professor) sempre tem prioridade sobre isso.
+            professor_inicial = request.user.professor.id
+
         form = AgendarForm(
             initial={
                 "data": request.GET.get("data"),
                 "hora_inicio": request.GET.get("hora_inicio"),
                 "equipamento": request.GET.get("equipamento"),
-                "professor": request.GET.get("professor"),
+                "professor": professor_inicial,
                 "tipo": request.GET.get("tipo"),
                 "aluno": request.GET.get("aluno"),
             }
         )
 
-    return render(request, "agenda/agendar.html", {"form": form, "aba": "agenda", "sugestoes": sugestoes})
+    alunos_ativos = Aluno.objects.filter(ativo=True).order_by("nome")
+    return render(
+        request,
+        "agenda/agendar.html",
+        {"form": form, "aba": "agenda", "sugestoes": sugestoes, "alunos_ativos": alunos_ativos},
+    )
 
 
 def _sugestoes_para_template(*, professor, tipo, dia, hora_desejada, equipamento_preferido, aluno):

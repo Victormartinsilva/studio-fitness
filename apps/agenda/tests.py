@@ -1547,6 +1547,94 @@ class RemararViewTests(TestCase):
         "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
     }
 )
+class AgendarViewTests(TestCase):
+    """Etapa 3a: professor logado vem pré-selecionado no formulário de
+    agendar (a menos que a URL já traga `?professor=` de outro professor,
+    de uma vaga clicada na grade) e a busca de aluno usa `<datalist>` em
+    vez de um `<select>` nativo."""
+
+    def setUp(self):
+        self.tipo = TipoSessao.objects.create(nome="EMS", duracao_min=45, preparo_min=10, troca_min=10)
+        usuario_bia = Usuario.objects.create_user("biaAg", password="teste12345", papel=Usuario.Papel.PROFESSOR)
+        self.professor_bia = Professor.objects.create(usuario=usuario_bia)
+        self.professor_bia.tipos_habilitados.add(self.tipo)
+        usuario_leo = Usuario.objects.create_user("leoAg", password="teste12345", papel=Usuario.Papel.PROFESSOR)
+        self.professor_leo = Professor.objects.create(usuario=usuario_leo)
+        self.professor_leo.tipos_habilitados.add(self.tipo)
+        self.gestor = Usuario.objects.create_user("gestorAg", password="teste12345", papel=Usuario.Papel.GESTOR)
+        self.aluno = Aluno.objects.create(nome="Mariana")
+        self.equipamento = Equipamento.objects.create(nome="Equip. 01")
+        self.url = reverse("agenda:agendar")
+
+    def test_professor_logado_sem_querystring_vem_preselecionado(self):
+        self.client.force_login(self.professor_bia.usuario)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, f'value="{self.professor_bia.id}" selected')
+
+    def test_professor_explicito_na_url_tem_prioridade_sobre_o_logado(self):
+        self.client.force_login(self.professor_bia.usuario)
+
+        response = self.client.get(self.url + f"?professor={self.professor_leo.id}")
+
+        self.assertContains(response, f'value="{self.professor_leo.id}" selected')
+        self.assertNotContains(response, f'value="{self.professor_bia.id}" selected')
+
+    def test_gestor_sem_querystring_nao_tem_professor_preselecionado(self):
+        self.client.force_login(self.gestor)
+
+        response = self.client.get(self.url)
+
+        # A opção em branco ("---------") vem marcada como selecionada por
+        # padrão (nenhum valor definido) — o que não pode acontecer é algum
+        # dos professores de fato aparecer pré-selecionado.
+        self.assertNotContains(response, f'value="{self.professor_bia.id}" selected')
+        self.assertNotContains(response, f'value="{self.professor_leo.id}" selected')
+
+    def test_campo_de_busca_de_aluno_com_datalist_dos_alunos_ativos(self):
+        Aluno.objects.create(nome="Aluno Inativo", ativo=False)
+        self.client.force_login(self.professor_bia.usuario)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, 'id="busca-aluno"')
+        self.assertContains(response, 'list="lista-alunos"')
+        self.assertContains(response, '<datalist id="lista-alunos">')
+        self.assertContains(response, f'<option value="{self.aluno.nome}" data-id="{self.aluno.pk}">')
+        self.assertNotContains(response, "Aluno Inativo")
+        self.assertContains(response, 'type="hidden"')
+
+    def test_post_com_aluno_id_direto_continua_funcionando(self):
+        # O campo real do form continua sendo um ModelChoiceField normal por
+        # baixo (só a apresentação HTML mudou pra hidden+busca): um POST
+        # direto com `aluno=<id>` (sem passar pelo JS da busca) precisa
+        # continuar agendando com sucesso.
+        self.client.force_login(self.professor_bia.usuario)
+        inicio = _horario(dia=0, hora=10)
+
+        response = self.client.post(
+            self.url,
+            {
+                "professor": self.professor_bia.id,
+                "aluno": self.aluno.id,
+                "tipo": self.tipo.id,
+                "equipamento": self.equipamento.id,
+                "data": inicio.date().isoformat(),
+                "hora_inicio": inicio.time().strftime("%H:%M"),
+            },
+        )
+
+        self.assertRedirects(response, reverse("agenda:minhas_sessoes"))
+        self.assertTrue(Sessao.objects.filter(aluno=self.aluno, professor=self.professor_bia).exists())
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
 class DetalheViewTests(TestCase):
     """`agenda:detalhe` — página de fallback sem JS: dados da sessão +
     ações (quando o usuário pode gerenciar) respeitando a mesma regra de
