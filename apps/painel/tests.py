@@ -1,5 +1,8 @@
+import json
 from datetime import timedelta
+from pathlib import Path
 
+from django.conf import settings
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -105,3 +108,42 @@ class SinoDeAlertasTests(TestCase):
         response = self.client.get(reverse("agenda:grade"))
 
         self.assertNotContains(response, 'class="badge-sino"')
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class PwaManifestTests(TestCase):
+    """Etapa 4.6: manifest leve pra permitir "Adicionar à tela de início",
+    sem service worker obrigatório — `base.html` só precisa linkar o
+    arquivo, e o arquivo em si precisa ter os campos mínimos que o
+    Lighthouse cobra pra considerar o app instalável."""
+
+    def test_base_html_referencia_o_manifest(self):
+        usuario = Usuario.objects.create_user("gestor2", password="teste12345", papel=Usuario.Papel.GESTOR)
+        self.client.force_login(usuario)
+
+        response = self.client.get(reverse("painel:home"))
+
+        self.assertContains(response, 'rel="manifest"')
+
+    def test_manifest_tem_campos_minimos_para_instalacao(self):
+        caminho = Path(settings.BASE_DIR) / "static" / "manifest.webmanifest"
+        dados = json.loads(caminho.read_text(encoding="utf-8"))
+
+        self.assertEqual(dados["display"], "standalone")
+        self.assertEqual(dados["start_url"], "/agenda/grade/#dia-atual")
+        self.assertTrue(dados["name"])
+        self.assertTrue(dados["short_name"])
+
+        tamanhos = {icone["sizes"] for icone in dados["icons"]}
+        self.assertIn("192x192", tamanhos)
+        self.assertIn("512x512", tamanhos)
+        for icone in dados["icons"]:
+            self.assertTrue(
+                (Path(settings.BASE_DIR) / "static" / icone["src"]).exists(),
+                f"ícone {icone['src']} referenciado no manifest não existe",
+            )
