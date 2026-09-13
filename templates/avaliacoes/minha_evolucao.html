@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Minha evolução — Studio Fitness{% endblock %}
+{% block estilos %}<link rel="stylesheet" href="{% static 'css/evolucao.css' %}">{% endblock %}
+{% block content %}
+<div class="cabecalho-evolucao">
+    <p class="rotulo-secao verde">Avaliação física</p>
+    <h1>Minha evolução</h1>
+    {% if ultima %}
+    <p class="sub">Última avaliação em {{ ultima.data|date:"d/m/Y" }} · {{ avaliacoes|length }} avaliaç{{ avaliacoes|length|pluralize:"ão,ões" }} desde {{ primeira.data|date:"M/Y"|lower }}</p>
+    {% endif %}
+</div>
+
+{% if avaliacoes %}
+{% include "avaliacoes/_painel_evolucao.html" %}
+{% else %}
+<div class="card vazio">
+    <h2>Sua evolução aparece aqui</h2>
+    <p class="sub">Assim que o estúdio registrar sua primeira avaliação física, você acompanha peso, % de gordura, massa magra e medidas nesta tela.</p>
+</div>
+{% endif %}
+
+<script src="{% static 'js/evolucao.js' %}" defer></script>
+{% endblock %}

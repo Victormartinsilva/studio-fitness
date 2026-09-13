@@ -87,6 +87,9 @@ EIXOS = (
     Eixo("meus_alunos", "Meus alunos", ("professor",)),
     Eixo("alunos", "Alunos", ("gestor",)),
     Eixo("cadastros", "Cadastros (equipamentos, tipos de sessão e planos)", ("gestor",)),
+    # Pacote Plus: gráficos de evolução do aluno. Para cliente no Básico,
+    # basta esconder este eixo do perfil aluno em /modulos/visoes/.
+    Eixo("evolucao", "Minha evolução (avaliação física do aluno)", ("aluno",)),
 )
 
 

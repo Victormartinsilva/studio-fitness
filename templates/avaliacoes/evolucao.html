@@ -1,5 +1,7 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Avaliações de {{ aluno.nome }} — Studio Fitness{% endblock %}
+{% block estilos %}<link rel="stylesheet" href="{% static 'css/evolucao.css' %}">{% endblock %}
 {% block content %}
 <div class="linha-titulo">
     <div>
@@ -11,34 +13,8 @@
     {% if pode_gerenciar %}<a class="botao-mais" href="{% url 'avaliacoes:evolucao' aluno.pk %}?novo=1" title="Nova avaliação">+</a>{% endif %}
 </div>
 
-<div class="metricas">
-    {% for metrica in metricas %}
-    <div class="metrica {{ metrica.classe }}">
-        <div class="rotulo">{{ metrica.rotulo }}</div>
-        <div class="valor-metrica">{{ metrica.valor }}</div>
-        {% if metrica.delta %}<div class="delta">{{ metrica.delta }}</div>{% endif %}
-    </div>
-    {% endfor %}
-</div>
-
-{% if grafico %}
-<section class="card" style="margin-top:16px">
-    <h2>Evolução do peso</h2>
-    <svg class="grafico-evolucao" viewBox="0 0 {{ grafico.largura }} {{ grafico.altura }}" role="img" aria-label="Evolução do peso ao longo das avaliações">
-        {% for y in grafico.linhas_grade %}
-        <line class="grade-linha" x1="{{ grafico.margem_x }}" x2="{{ grafico.eixo_x2 }}" y1="{{ y }}" y2="{{ y }}"></line>
-        {% endfor %}
-        <polygon class="area" points="{{ grafico.area }}"></polygon>
-        <polyline class="linha" points="{% for ponto in grafico.pontos %}{{ ponto.x }},{{ ponto.y }} {% endfor %}"></polyline>
-        {% for ponto in grafico.pontos %}
-        <circle class="ponto{% if ponto.ultimo %} ponto-atual{% endif %}" cx="{{ ponto.x }}" cy="{{ ponto.y }}" r="{{ ponto.raio }}"></circle>
-        {% if ponto.destaque %}
-        <text class="rotulo-valor{% if ponto.ultimo %} atual{% endif %}" x="{{ ponto.x }}" y="{{ ponto.label_y }}" text-anchor="middle">{{ ponto.peso }} kg</text>
-        <text class="rotulo-eixo" x="{{ ponto.x }}" y="{{ grafico.eixo_y }}" text-anchor="middle">{{ ponto.data }}</text>
-        {% endif %}
-        {% endfor %}
-    </svg>
-</section>
+{% if avaliacoes %}
+{% include "avaliacoes/_painel_evolucao.html" %}
 {% endif %}
 
 <section style="margin-top:16px">

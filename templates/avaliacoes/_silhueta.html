@@ -1,0 +1,86 @@
+{% comment %}
+Silhueta frontal estilizada (SVG inline, sem imagem externa) com as quatro
+medidas do slide 09: braço e cintura à esquerda, quadril e coxa à direita.
+
+viewBox 300×470 e o contêiner `.silhueta` com o mesmo aspect-ratio: os
+rótulos (HTML, para ficarem legíveis em qualquer largura) são posicionados em
+% no CSS e caem exatamente na altura das faixas desenhadas aqui.
+
+Espera `medidas` = {braco, cintura, quadril, coxa} → indicador (evolucao.py).
+{% endcomment %}
+<div class="silhueta">
+    <svg viewBox="0 0 300 470" aria-hidden="true" focusable="false">
+        <defs>
+            <linearGradient id="sil-blusa" x1="0" x2="1">
+                <stop offset="0" stop-color="#bba3dc"/>
+                <stop offset=".5" stop-color="#d9caef"/>
+                <stop offset="1" stop-color="#b59cd8"/>
+            </linearGradient>
+            <linearGradient id="sil-calca" x1="0" x2="1">
+                <stop offset="0" stop-color="#8ea283"/>
+                <stop offset=".5" stop-color="#b0c2a4"/>
+                <stop offset="1" stop-color="#899e7e"/>
+            </linearGradient>
+            <linearGradient id="sil-pele" x1="0" x2="1">
+                <stop offset="0" stop-color="#dcb08f"/>
+                <stop offset=".5" stop-color="#efcdb2"/>
+                <stop offset="1" stop-color="#d8aa88"/>
+            </linearGradient>
+        </defs>
+
+        <!-- linhas-guia (desenhadas antes do corpo, que as cobre) -->
+        <g class="guias">
+            <path d="M74 122 L101 130"/>
+            <path d="M74 190 L126 184"/>
+            <path d="M180 214 L226 205"/>
+            <path d="M180 262 L226 272"/>
+        </g>
+
+        <ellipse class="sombra" cx="150" cy="458" rx="52" ry="6"/>
+
+        <!-- braços (atrás do tronco) -->
+        <path fill="url(#sil-blusa)" d="M114 94 C106 100 103 120 102 140 L98 190 C97 205 96 218 96 228 L106 228 C107 215 109 202 110 190 L116 145 C118 130 119 115 118 102 Z"/>
+        <path fill="url(#sil-blusa)" d="M186 94 C194 100 197 120 198 140 L202 190 C203 205 204 218 204 228 L194 228 C193 215 191 202 190 190 L184 145 C182 130 181 115 182 102 Z"/>
+        <ellipse fill="url(#sil-pele)" cx="101" cy="238" rx="6" ry="11"/>
+        <ellipse fill="url(#sil-pele)" cx="199" cy="238" rx="6" ry="11"/>
+
+        <!-- pernas (legging) e tênis -->
+        <path fill="url(#sil-calca)" d="M121 206 L179 206 C181 230 180 260 177 290 C175 305 175 315 176 330 C178 360 176 395 170 440 L158 440 C157 400 156 360 158 330 C158 310 156 290 154 265 C153 250 152 240 150 234 C148 240 147 250 146 265 C144 290 142 310 142 330 C144 360 143 400 142 440 L130 440 C124 395 122 360 124 330 C125 315 125 305 123 290 C120 260 119 230 121 206 Z"/>
+        <path class="costura" d="M150 238 L150 250 M131 326 C135 329 139 329 142 326 M158 326 C161 329 165 329 169 326"/>
+        <rect class="tenis" x="125" y="436" width="21" height="16" rx="7"/>
+        <rect class="tenis" x="154" y="436" width="21" height="16" rx="7"/>
+        <path class="sola" d="M126 449 H145 M155 449 H174"/>
+
+        <!-- tronco (blusa de gola alta) -->
+        <path fill="url(#sil-blusa)" d="M130 82 C140 78 160 78 170 82 C180 85 187 90 188 100 L184 140 C181 160 174 172 173 185 C173 195 177 202 179 210 L121 210 C123 202 127 195 127 185 C126 172 119 160 116 140 L112 100 C113 90 120 85 130 82 Z"/>
+        <path class="costura" d="M116 140 C125 146 136 148 150 148 C164 148 175 146 184 140"/>
+        <rect class="cos" x="121" y="203" width="58" height="7" rx="3"/>
+        <rect fill="url(#sil-pele)" x="143" y="60" width="14" height="14" rx="4"/>
+        <rect fill="url(#sil-blusa)" x="140" y="68" width="20" height="16" rx="6"/>
+
+        <!-- cabeça e cabelo -->
+        <ellipse fill="url(#sil-pele)" cx="150" cy="46" rx="16" ry="20"/>
+        <path class="cabelo" d="M132 55 C128 30 142 20 151 21 C164 22 173 33 169 56 C167 48 166 40 160 36 C152 40 142 40 137 37 C134 42 133 48 132 55 Z"/>
+
+        <!-- faixas de medida -->
+        <g class="aneis">
+            <ellipse class="anel{% if not medidas.braco.tem_valor %} sem-dado{% endif %}" cx="110" cy="130" rx="10" ry="3.8"/>
+            <ellipse class="anel{% if not medidas.braco.tem_valor %} sem-dado{% endif %}" cx="190" cy="130" rx="10" ry="3.8"/>
+            <ellipse class="anel{% if not medidas.cintura.tem_valor %} sem-dado{% endif %}" cx="150" cy="184" rx="25" ry="5.5"/>
+            <ellipse class="anel{% if not medidas.quadril.tem_valor %} sem-dado{% endif %}" cx="150" cy="214" rx="31" ry="6.5"/>
+            <ellipse class="anel{% if not medidas.coxa.tem_valor %} sem-dado{% endif %}" cx="133.5" cy="262" rx="14" ry="4.6"/>
+            <ellipse class="anel{% if not medidas.coxa.tem_valor %} sem-dado{% endif %}" cx="166.5" cy="262" rx="14" ry="4.6"/>
+        </g>
+        <g class="pontas">
+            <circle class="roxo" cx="74" cy="122" r="3.2"/>
+            <circle class="roxo" cx="74" cy="190" r="3.2"/>
+            <circle class="verde" cx="226" cy="205" r="3.2"/>
+            <circle class="verde" cx="226" cy="272" r="3.2"/>
+        </g>
+    </svg>
+
+    {% include "avaliacoes/_medida.html" with m=medidas.braco posicao="braco" lado="esq" cor="roxo" %}
+    {% include "avaliacoes/_medida.html" with m=medidas.cintura posicao="cintura" lado="esq" cor="roxo" %}
+    {% include "avaliacoes/_medida.html" with m=medidas.quadril posicao="quadril" lado="dir" cor="verde" %}
+    {% include "avaliacoes/_medida.html" with m=medidas.coxa posicao="coxa" lado="dir" cor="verde" %}
+</div>

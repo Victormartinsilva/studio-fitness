@@ -1,0 +1,6 @@
+<div class="medida medida-{{ posicao }} {{ lado }}">
+    <span class="ponto-medida {{ cor }}" aria-hidden="true"></span>
+    <span class="nome">{{ m.rotulo }}</span>
+    <span class="valor">{{ m.valor }}</span>
+    {% if m.variacao %}<span class="delta {{ m.classe }}">{{ m.variacao }}</span>{% endif %}
+</div>

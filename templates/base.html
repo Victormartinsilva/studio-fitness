@@ -12,6 +12,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    {% block estilos %}{% endblock %}
 </head>
 <body>
     <header class="topbar">
@@ -24,6 +25,9 @@
             <a href="{% url 'agenda:grade' %}#dia-atual" class="{% if aba == 'agenda' %}ativo{% endif %}">Agenda</a>
             {% if request.user.is_professor and eixos_visiveis.meus_alunos %}
             <a href="{% url 'cadastros:meus_alunos' %}" class="{% if aba == 'meus_alunos' %}ativo{% endif %}">Meus alunos</a>
+            {% endif %}
+            {% if request.user.is_aluno and eixos_visiveis.evolucao %}
+            <a href="{% url 'avaliacoes:minha_evolucao' %}" class="{% if aba == 'evolucao' %}ativo{% endif %}">Minha evolução</a>
             {% endif %}
             {% if request.user.is_superuser or request.user.is_gestor %}
             {% if request.user.is_superuser or eixos_visiveis.alunos %}
@@ -83,6 +87,9 @@
         <a href="{% url 'agenda:grade' %}#dia-atual" class="{% if aba == 'agenda' %}ativo{% endif %}">Agenda</a>
         {% if request.user.is_professor and eixos_visiveis.meus_alunos %}
         <a href="{% url 'cadastros:meus_alunos' %}" class="{% if aba == 'meus_alunos' %}ativo{% endif %}">Meus alunos</a>
+        {% endif %}
+        {% if request.user.is_aluno and eixos_visiveis.evolucao %}
+        <a href="{% url 'avaliacoes:minha_evolucao' %}" class="{% if aba == 'evolucao' %}ativo{% endif %}">Evolução</a>
         {% endif %}
         {% if request.user.is_superuser or request.user.is_gestor %}
         {% if request.user.is_superuser or eixos_visiveis.alunos %}

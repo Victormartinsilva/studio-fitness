@@ -36,6 +36,24 @@
     </div>
     {% endif %}
 
+    {% if resumo_evolucao %}
+    <a class="card resumo-evolucao" style="display:block;color:inherit" href="{% url 'avaliacoes:minha_evolucao' %}">
+        <div class="linha-titulo" style="margin-bottom:10px">
+            <h2 style="margin:0">Sua evolução</h2>
+            <span class="espaco"></span>
+            <span class="sub">Ver tudo ›</span>
+        </div>
+        <div class="kpis">
+            {% for item in resumo_evolucao %}
+            <div class="kpi">
+                <span class="valor">{{ item.valor }}</span>
+                <span class="nome">{{ item.rotulo }}{% if item.variacao %} · {{ item.variacao }}{% endif %}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </a>
+    {% endif %}
+
     {% if kpis %}
     <div class="kpis">
         {% for kpi in kpis %}

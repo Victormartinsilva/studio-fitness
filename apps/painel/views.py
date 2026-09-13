@@ -6,9 +6,10 @@ from django.utils import timezone
 
 from apps.agenda import motor
 from apps.agenda.models import Sessao
+from apps.avaliacoes import evolucao
 from apps.cadastros.models import Aluno, Equipamento
 from apps.modulos.catalogo import MODULOS
-from apps.modulos.models import VisibilidadeModulo
+from apps.modulos.models import VisibilidadeModulo, eixo_visivel
 
 
 @login_required
@@ -42,6 +43,15 @@ def home(request):
             {"valor": Equipamento.objects.filter(status=Equipamento.Status.ATIVO).count(), "nome": "Equipamentos ativos"},
         ]
 
+    # Resumo "Sua evolução" na home do aluno (eixo do Pacote Plus).
+    resumo_evolucao = []
+    aluno = getattr(usuario, "aluno", None) if usuario.is_aluno else None
+    if aluno and eixo_visivel(usuario, "evolucao"):
+        avaliacoes = list(aluno.avaliacoes.all()[:10])
+        if avaliacoes:
+            indicadores = evolucao.indicadores_atuais(avaliacoes)
+            resumo_evolucao = [indicadores[c] for c in ("percentual_gordura", "massa_magra_kg") if indicadores[c]["tem_valor"]]
+
     modulos_previa = []
     if not (usuario.is_superuser or usuario.is_gestor):
         slugs_visiveis = set(
@@ -60,6 +70,7 @@ def home(request):
             "pode_agendar": usuario.is_superuser or usuario.is_gestor or usuario.is_professor,
             "proximas_24h": minhas.filter(inicio__gte=agora, inicio__lte=agora + timedelta(hours=24)).count(),
             "modulos_previa": modulos_previa,
+            "resumo_evolucao": resumo_evolucao,
         },
     )
 

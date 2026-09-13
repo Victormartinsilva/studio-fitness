@@ -1,0 +1,47 @@
+{% comment %}
+Painel visual de evolução (slide 09): silhueta com medidas à esquerda;
+cartões, gráfico por métrica e ações à direita. Uma coluna no celular.
+Usado por "Minha evolução" (aluno) e pela ficha do aluno (gestor).
+{% endcomment %}
+<div class="evolucao">
+    <section class="composicao" aria-labelledby="titulo-composicao">
+        <h2 class="rotulo-secao" id="titulo-composicao">Composição corporal</h2>
+        {% include "avaliacoes/_silhueta.html" %}
+        <p class="nota-silhueta">Medidas de {{ ultima.data|date:"d/m/Y" }} · variação desde a avaliação anterior</p>
+    </section>
+
+    <div class="evolucao-lado">
+        <div class="cartoes-evolucao">
+            {% for c in cartoes %}
+            <div class="cartao-ev {% cycle 'roxo' 'verde' 'teal' %}">
+                <span class="rotulo-cartao">{{ c.rotulo }}</span>
+                <span class="valor">{{ c.valor }}</span>
+                {% if c.variacao %}<span class="delta {{ c.classe }}">{{ c.variacao }} <span class="sufixo">{{ c.sufixo }}</span></span>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <section class="grafico-ev-card" id="grafico" aria-labelledby="titulo-grafico">
+            <h2 class="rotulo-secao" id="titulo-grafico">Evolução · {{ metrica_ativa.rotulo }}</h2>
+            <nav class="chips-metrica" aria-label="Escolher métrica do gráfico">
+                {% for chip in chips_metrica %}
+                <a href="{{ url_base }}?metrica={{ chip.campo }}#grafico" class="{% if chip.ativo %}ativo{% endif %}"{% if chip.ativo %} aria-current="true"{% endif %}>{{ chip.rotulo }}</a>
+                {% endfor %}
+            </nav>
+            {% if grafico %}
+            <div class="so-compacto">{% include "avaliacoes/_grafico_evolucao.html" with g=grafico_compacto %}</div>
+            <div class="so-amplo">{% include "avaliacoes/_grafico_evolucao.html" with g=grafico %}</div>
+            {% else %}
+            <p class="sub grafico-vazio">A evolução de {{ metrica_ativa.rotulo|lower }} aparece a partir da segunda avaliação com essa medida.</p>
+            {% endif %}
+        </section>
+
+        <div class="acoes-evolucao">
+            {% if avaliacoes|length > 1 %}<a class="pilula roxa" href="{{ url_comparar }}">Comparar avaliações</a>{% endif %}
+            {% if pode_compartilhar and texto_compartilhar %}
+            <button type="button" class="pilula verde" data-compartilhar data-texto="{{ texto_compartilhar }}" hidden>Compartilhar evolução</button>
+            {% endif %}
+        </div>
+        <p class="aviso-compartilhar" role="status" hidden></p>
+    </div>
+</div>

@@ -2,7 +2,7 @@ from django.db import models
 
 from apps.contas.models import Usuario
 
-from .catalogo import EIXOS, MODULOS
+from .catalogo import EIXOS, MODULOS, obter_eixo
 
 # Só perfis não administrativos precisam de configuração de visibilidade:
 # gestor/superusuário sempre veem tudo pela área de módulos.
@@ -58,3 +58,14 @@ class VisibilidadeEixo(models.Model):
 
     def __str__(self):
         return f"{self.slug} — {self.get_papel_display()}: {'visível' if self.visivel else 'oculto'}"
+
+
+def eixo_visivel(usuario, slug):
+    """Mesma regra de `context_processors.eixos_visiveis`, para um eixo só —
+    usada pelas views para barrar a URL (não só esconder o link do menu)."""
+    eixo = obter_eixo(slug)
+    return (
+        eixo is not None
+        and usuario.papel in eixo.papeis_padrao
+        and not VisibilidadeEixo.objects.filter(papel=usuario.papel, slug=slug, visivel=False).exists()
+    )

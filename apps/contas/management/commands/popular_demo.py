@@ -7,13 +7,15 @@ um bloqueio de equipamento (pra ter ocupação "real" descontada na grade).
 Senha de todos: demo1234
 """
 import random
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
+from decimal import Decimal
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from apps.agenda import servicos
 from apps.agenda.models import BloqueioEquipamento
+from apps.avaliacoes.models import AvaliacaoFisica
 from apps.cadastros.models import Aluno, Equipamento, Professor, TipoSessao
 from apps.contas.models import Usuario
 from apps.planos.models import Contratacao, Plano
@@ -26,6 +28,18 @@ SENHA_DEMO = "demo1234"
 # na prática (colisão de horário só é ignorada via try/except, ver abaixo).
 DIAS_DEMO = 14
 HORAS_CANDIDATAS = [8, 9, 10, 13, 14, 15, 16, 17]
+
+# Avaliações físicas mensais da aluna demo, da mais antiga para a atual
+# (valores finais = slide 09 da proposta).
+AVALIACOES_DEMO = [
+    {"peso_kg": 69.4, "percentual_gordura": 29.1, "massa_magra_kg": 47.3, "braco_cm": 28.6, "cintura_cm": 78.0, "quadril_cm": 101.5, "coxa_cm": 57.8},
+    {"peso_kg": 68.9, "percentual_gordura": 28.6, "massa_magra_kg": 47.4, "braco_cm": 28.7, "cintura_cm": 77.2, "quadril_cm": 101.0, "coxa_cm": 57.4},
+    {"peso_kg": 68.2, "percentual_gordura": 27.9, "massa_magra_kg": 47.6, "braco_cm": 28.9, "cintura_cm": 76.1, "quadril_cm": 100.2, "coxa_cm": 56.9},
+    {"peso_kg": 68.5, "percentual_gordura": 28.2, "massa_magra_kg": 47.5, "braco_cm": 28.8, "cintura_cm": 76.4, "quadril_cm": 100.4, "coxa_cm": 57.0},
+    {"peso_kg": 67.6, "percentual_gordura": 27.0, "massa_magra_kg": 47.9, "braco_cm": 29.0, "cintura_cm": 74.8, "quadril_cm": 99.6, "coxa_cm": 56.3},
+    {"peso_kg": 66.7, "percentual_gordura": 26.4, "massa_magra_kg": 48.4, "braco_cm": 29.1, "cintura_cm": 73.5, "quadril_cm": 99.0, "coxa_cm": 55.8},
+    {"peso_kg": 64.8, "percentual_gordura": 24.1, "massa_magra_kg": 49.2, "braco_cm": 29.4, "cintura_cm": 72.0, "quadril_cm": 98.2, "coxa_cm": 55.1},
+]
 
 
 class Command(BaseCommand):
@@ -156,6 +170,8 @@ class Command(BaseCommand):
                 except Exception:
                     pass
 
+        self._criar_avaliacoes_demo(aluna_mariana, gestora, hoje)
+
         # Bloqueio de equipamento (ex.: manutenção de manhã) pra Etapa 1/2
         # terem uma ocupação real descontando vaga na grade/painel.
         manha_amanha = timezone.make_aware(datetime.combine(hoje + timedelta(days=1), time(8, 0)))
@@ -175,6 +191,24 @@ class Command(BaseCommand):
                 f"(senha: {SENHA_DEMO})"
             )
         )
+
+    def _criar_avaliacoes_demo(self, aluno, registrado_por, hoje):
+        """Sete avaliações mensais (a última no mês corrente) para a tela
+        "Minha evolução" reproduzir o slide 09 da proposta: 64,8 kg, 24,1% de
+        gordura e 49,2 kg de massa magra, com a gordura caindo no período."""
+        for meses_atras, valores in zip(range(len(AVALIACOES_DEMO) - 1, -1, -1), AVALIACOES_DEMO):
+            ano, mes = hoje.year, hoje.month - meses_atras
+            while mes < 1:
+                ano, mes = ano - 1, mes + 12
+            data = min(date(ano, mes, 10), hoje)
+            AvaliacaoFisica.objects.get_or_create(
+                aluno=aluno,
+                data=data,
+                defaults={
+                    **{campo: Decimal(str(valor)) for campo, valor in valores.items()},
+                    "registrado_por": registrado_por,
+                },
+            )
 
     def _criar_usuario(self, username, primeiro_nome, sobrenome, papel, is_staff=False, is_superuser=False):
         usuario, _ = Usuario.objects.get_or_create(

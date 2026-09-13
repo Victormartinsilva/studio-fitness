@@ -1,0 +1,9 @@
+<svg class="grafico-ev" viewBox="0 0 {{ g.largura }} {{ g.altura }}" role="img" aria-label="Evolução de {{ g.titulo }}: {% for p in g.pontos %}{{ p.data }} {{ p.valor }}{% if not forloop.last %}; {% endif %}{% endfor %}">
+    {% for y in g.grade %}<line class="grade-linha" x1="{{ g.margem_x }}" x2="{{ g.fim_x }}" y1="{{ y }}" y2="{{ y }}"></line>{% endfor %}
+    <polyline class="linha" points="{{ g.linha }}"></polyline>
+    {% for p in g.pontos %}
+    <circle class="ponto{% if p.ultimo %} atual{% endif %}" cx="{{ p.x }}" cy="{{ p.y }}" r="{{ p.raio }}"><title>{{ p.data }}: {{ p.valor }}</title></circle>
+    {% if p.ultimo %}<text class="valor-ultimo" x="{{ p.x }}" y="{{ p.rotulo_y }}" text-anchor="end">{{ p.valor }}</text>{% endif %}
+    {% if p.eixo %}<text class="eixo" x="{{ p.x }}" y="{{ g.eixo_y }}" text-anchor="middle">{{ p.eixo }}</text>{% endif %}
+    {% endfor %}
+</svg>

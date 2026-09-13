@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Comparar avaliações — Studio Fitness{% endblock %}
+{% block estilos %}<link rel="stylesheet" href="{% static 'css/evolucao.css' %}">{% endblock %}
+{% block content %}
+<div class="linha-titulo">
+    <div>
+        <h1>Comparar avaliações</h1>
+        {% if aba != "evolucao" %}<p class="sub">{{ aluno.nome }}</p>{% endif %}
+    </div>
+    <span class="espaco"></span>
+    <a class="btn btn-secundario btn-sm" href="{{ url_voltar }}">‹ Voltar</a>
+</div>
+
+<form method="get" class="card form-comparar">
+    <label>De
+        <select name="de">
+            {% for a in avaliacoes %}<option value="{{ a.pk }}"{% if a.pk == de.pk %} selected{% endif %}>{{ a.data|date:"d/m/Y" }}</option>{% endfor %}
+        </select>
+    </label>
+    <label>Até
+        <select name="ate">
+            {% for a in avaliacoes %}<option value="{{ a.pk }}"{% if a.pk == ate.pk %} selected{% endif %}>{{ a.data|date:"d/m/Y" }}</option>{% endfor %}
+        </select>
+    </label>
+    <button type="submit" class="btn">Comparar</button>
+</form>
+
+<div class="evolucao" style="margin-top:14px">
+    <section class="composicao" aria-labelledby="titulo-composicao">
+        <h2 class="rotulo-secao" id="titulo-composicao">Composição corporal</h2>
+        {% include "avaliacoes/_silhueta.html" %}
+        <p class="nota-silhueta">Medidas de {{ ate.data|date:"d/m/Y" }} · variação desde {{ de.data|date:"d/m/Y" }}</p>
+    </section>
+
+    <section class="grafico-ev-card">
+        <h2 class="rotulo-secao">{{ de.data|date:"d/m/Y" }} → {{ ate.data|date:"d/m/Y" }}</h2>
+        <div class="tabela-rolavel">
+            <table class="tabela-comparacao">
+                <thead>
+                    <tr><th scope="col">Métrica</th><th scope="col">Antes</th><th scope="col">Agora</th><th scope="col">Variação</th></tr>
+                </thead>
+                <tbody>
+                    {% for linha in linhas %}
+                    <tr>
+                        <th scope="row">{{ linha.rotulo }}</th>
+                        <td>{{ linha.valor_anterior }}</td>
+                        <td><strong>{{ linha.valor }}</strong></td>
+                        <td class="delta {{ linha.classe }}">{{ linha.variacao|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}
