@@ -74,7 +74,16 @@ a:hover { color: var(--verde); }
 
 /* ---------- topbar: sino de alertas, recolhível (mesmo padrão do
    `.calendario-picker` da agenda: details/summary, sem JS) ---------- */
-.sino-alertas { position: relative; }
+/* Sem `position: relative` aqui de propósito: o sino não é o último
+   elemento da topbar (avatar/nome/Sair vêm depois dele), então se
+   `.painel-sino` (abaixo) usasse o sino como containing block, `right: 0`
+   alinharia pela borda direita do sino — não da tela — e no mobile o
+   painel (que chega a 92vw) ficava com a borda direita "no meio do
+   caminho" e sobrava pra fora da viewport pela esquerda. Deixando sem
+   position aqui, o containing block sobe pra `.topbar` (que já é
+   `position: sticky`, ocupa a largura toda e tem o mesmo padding nos dois
+   lados), então `right: 0`/`top: 100%` do painel encostam certinho no
+   canto da topbar em qualquer largura de tela. */
 .sino-alertas summary {
   cursor: pointer; list-style: none; font-size: 18px; line-height: 1;
   position: relative; padding: 4px;
