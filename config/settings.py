@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "apps.contas",
     "apps.cadastros",
     "apps.planos",
+    "apps.financeiro",
     "apps.agenda",
     "apps.avaliacoes",
     "apps.modulos",

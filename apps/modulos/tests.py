@@ -34,12 +34,15 @@ class ModulosTests(TestCase):
         self.assertContains(response, "Gestão financeira")
 
     def test_apenas_administrador_acessa_detalhe_de_modulo(self):
+        # "portal-aluno" (Fase 3) usado aqui de propósito: precisa de um
+        # módulo ainda não liberado pra exercitar o aviso de "Prévia
+        # administrativa" — "financeiro" já foi liberado (Fase 2 completa).
         self.client.force_login(self.professor)
-        response = self.client.get(reverse("modulos:detalhe", args=["financeiro"]))
+        response = self.client.get(reverse("modulos:detalhe", args=["portal-aluno"]))
         self.assertEqual(response.status_code, 403)
 
         self.client.force_login(self.administrador)
-        response = self.client.get(reverse("modulos:detalhe", args=["financeiro"]))
+        response = self.client.get(reverse("modulos:detalhe", args=["portal-aluno"]))
         self.assertContains(response, "Prévia administrativa")
 
     def test_apenas_administrador_configura_visoes(self):
@@ -50,12 +53,12 @@ class ModulosTests(TestCase):
         self.client.force_login(self.administrador)
         response = self.client.post(
             reverse("modulos:visoes"),
-            {"professor__financeiro": "on"},
+            {"professor__portal-aluno": "on"},
         )
         self.assertRedirects(response, reverse("modulos:visoes"))
         self.assertTrue(
             VisibilidadeModulo.objects.filter(
-                papel=Usuario.Papel.PROFESSOR, slug="financeiro", visivel=True
+                papel=Usuario.Papel.PROFESSOR, slug="portal-aluno", visivel=True
             ).exists()
         )
 
@@ -99,7 +102,7 @@ class ModulosTests(TestCase):
         self.client.force_login(self.administrador)
         self.client.post(
             reverse("modulos:visoes"),
-            {"professor__financeiro": "on"},
+            {"professor__portal-aluno": "on"},
         )
         self.assertFalse(VisibilidadeEixo.objects.exists())
 

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Financeiro — Studio Fitness{% endblock %}
+{% block content %}
+<div class="linha-titulo">
+    <h1>Financeiro</h1>
+    <span class="espaco"></span>
+    <form method="post" action="{% url 'financeiro:gerar' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-secundario btn-sm">Gerar cobranças do mês</button>
+    </form>
+    <a class="botao-mais" href="{% url 'financeiro:cobrancas' %}?novo=1" title="Nova cobrança">+</a>
+</div>
+
+<div class="abas" style="max-width:480px;margin-bottom:16px">
+    <a href="{% url 'financeiro:cobrancas' %}" class="{% if not status %}ativo{% endif %}">Todas</a>
+    <a href="?status=pendente" class="{% if status == 'pendente' %}ativo{% endif %}">Pendentes</a>
+    <a href="?status=atrasada" class="{% if status == 'atrasada' %}ativo{% endif %}">Atrasadas</a>
+    <a href="?status=paga" class="{% if status == 'paga' %}ativo{% endif %}">Pagas</a>
+    <a href="?status=cancelada" class="{% if status == 'cancelada' %}ativo{% endif %}">Canceladas</a>
+</div>
+
+<div class="lista">
+    {% for cobranca in itens %}
+    <div class="item">
+        <span class="iniciais">{{ cobranca.contratacao.aluno.nome|slice:":2"|upper }}</span>
+        <div class="corpo">
+            <span class="titulo">{{ cobranca.contratacao.aluno }} · {{ cobranca.competencia }}</span>
+            <span class="meta">{{ cobranca.contratacao.plano }} · vence {{ cobranca.vencimento|date:"d/m/Y" }}</span>
+        </div>
+        <div class="acoes">
+            <span style="font-family:'Outfit',sans-serif;font-weight:700;font-size:15px;color:var(--roxo)">R$ {{ cobranca.valor }}</span>
+            {% if cobranca.status == 'paga' %}
+            <span class="tag ok">Paga</span>
+            {% elif cobranca.status == 'cancelada' %}
+            <span class="tag off">Cancelada</span>
+            {% elif cobranca.esta_atrasada %}
+            <span class="tag critico">Atrasada</span>
+            {% else %}
+            <span class="tag aviso">Pendente</span>
+            {% endif %}
+            {% if cobranca.status == 'pendente' %}
+            <form method="post" action="{% url 'financeiro:cobrancas_editar' cobranca.pk %}">
+                {% csrf_token %}
+                <button type="submit" name="_pagar" value="1" class="btn btn-sm">Dar baixa</button>
+            </form>
+            <form method="post" action="{% url 'financeiro:cobrancas_editar' cobranca.pk %}" onsubmit="return confirm('Cancelar esta cobrança?');">
+                {% csrf_token %}
+                <button type="submit" name="_cancelar" value="1" class="btn btn-secundario btn-sm">Cancelar</button>
+            </form>
+            {% endif %}
+            <a class="btn btn-secundario btn-sm" href="{% url 'financeiro:cobrancas_editar' cobranca.pk %}">Editar</a>
+            <form method="post" action="{% url 'financeiro:cobrancas_editar' cobranca.pk %}" onsubmit="return confirm('Excluir esta cobrança?');">
+                {% csrf_token %}
+                <button type="submit" name="_excluir" value="1" class="btn-perigo">Excluir</button>
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    <div class="card vazio">Nenhuma cobrança encontrada.</div>
+    {% endfor %}
+</div>
+
+{% include "_partials/modal_formulario.html" with titulo_novo="Nova cobrança" titulo_editar="Editar cobrança" cancel_url="financeiro:cobrancas" %}
+{% endblock %}

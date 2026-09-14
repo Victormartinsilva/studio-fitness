@@ -265,6 +265,9 @@ button.sugestao-item { font: inherit; cursor: pointer; }
 .tag.ok { background: var(--verde-fundo); color: var(--verde-texto); }
 .tag.aviso { background: var(--ambar-fundo); color: #8a6a12; }
 .tag.off { background: #f2eef5; color: var(--ink-3); }
+/* Mesmo vermelho de `.alerta.critico`, pra "Atrasada" (cobrança financeiro)
+   destoar visualmente de "Pendente" (`.tag.aviso`, âmbar). */
+.tag.critico { background: #fbe4e1; color: var(--vermelho); }
 
 /* ---------- lista de registros (tabela vira cartão no celular) ---------- */
 .lista { display: flex; flex-direction: column; gap: 10px; }
