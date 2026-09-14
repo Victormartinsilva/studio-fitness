@@ -46,15 +46,18 @@ class PainelHomeTests(TestCase):
         self.assertNotContains(response, "Em breve para você")
 
     def test_professor_ve_previa_liberada_pelo_admin(self):
+        # "portal-aluno" (Fase 3) usado aqui de propósito: precisa de um
+        # módulo ainda não liberado pra exercitar a prévia "Em breve para
+        # você" — "financeiro" já foi liberado (Fase 2 completa).
         VisibilidadeModulo.objects.create(
-            papel=Usuario.Papel.PROFESSOR, slug="financeiro", visivel=True
+            papel=Usuario.Papel.PROFESSOR, slug="portal-aluno", visivel=True
         )
         self.client.force_login(self.professor)
 
         response = self.client.get(self.url)
 
         self.assertContains(response, "Em breve para você")
-        self.assertContains(response, "Gestão financeira")
+        self.assertContains(response, "Portal do aluno")
 
     def test_gestor_ve_os_4_cards_de_kpi(self):
         self.client.force_login(self.gestor)

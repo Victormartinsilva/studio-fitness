@@ -1,6 +1,7 @@
 from datetime import datetime, time, timedelta
 
 from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
 from django.shortcuts import render
 from django.utils import timezone
 
@@ -8,6 +9,7 @@ from apps.agenda import motor
 from apps.agenda.models import Sessao
 from apps.avaliacoes import evolucao
 from apps.cadastros.models import Aluno, Equipamento
+from apps.financeiro.models import Cobranca
 from apps.modulos.catalogo import MODULOS
 from apps.modulos.models import VisibilidadeModulo, eixo_visivel
 
@@ -54,6 +56,13 @@ def home(request):
             {"valor": Aluno.objects.filter(ativo=True).count(), "nome": "Alunos ativos"},
             {"valor": Equipamento.objects.filter(status=Equipamento.Status.ATIVO).count(), "nome": "Equipamentos ativos"},
         ]
+        pendentes_mes = Cobranca.objects.filter(
+            status=Cobranca.Status.PENDENTE, vencimento__year=hoje.year, vencimento__month=hoje.month
+        )
+        a_receber = pendentes_mes.aggregate(total=Sum("valor"))["total"] or 0
+        atrasadas = Cobranca.objects.filter(status=Cobranca.Status.PENDENTE, vencimento__lt=hoje).count()
+        kpis.append({"valor": f"R$ {a_receber}", "nome": "A receber (mês)"})
+        kpis.append({"valor": atrasadas, "nome": "Cobranças atrasadas"})
 
     # Resumo "Sua evolução" na home do aluno (eixo do Pacote Plus).
     resumo_evolucao = []

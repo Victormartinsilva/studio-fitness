@@ -42,6 +42,7 @@ MODULOS = (
         "Mensalidades, contas a receber, cobranças e inadimplência.",
         2,
         "Gestão",
+        True,
     ),
     Modulo(
         "portal-aluno",
@@ -90,6 +91,7 @@ EIXOS = (
     # Pacote Plus: gráficos de evolução do aluno. Para cliente no Básico,
     # basta esconder este eixo do perfil aluno em /modulos/visoes/.
     Eixo("evolucao", "Minha evolução (avaliação física do aluno)", ("aluno",)),
+    Eixo("financeiro", "Financeiro (mensalidades e cobranças)", ("gestor",)),
 )
 
 

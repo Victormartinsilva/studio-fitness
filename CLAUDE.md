@@ -31,11 +31,12 @@ No test suite exists yet in the repo — when adding tests, `apps/agenda/motor.p
 
 ### App layout (`apps/`)
 
-Five Django apps, each owning one URL prefix mounted in `config/urls.py`:
+Six Django apps, each owning one URL prefix mounted in `config/urls.py` (plus `avaliacoes`, `modulos` and `assistente`, covered in their own sections/not detailed here):
 
 - **`contas`** — custom user model (`Usuario`, `AUTH_USER_MODEL`) with a `papel` (role) field: `gestor`, `professor`, or `aluno`. Login/logout views only; no signup flow. `permissions.py` defines `gestor_required`, the decorator gating every cadastro/admin screen (checked via `request.user.is_gestor` / `is_superuser`, properties on `Usuario`).
 - **`cadastros`** — reference data: `Equipamento`, `TipoSessao` (session type — carries `duracao_min`, `preparo_min`, `troca_min`, and `professor_no_preparo`), `Professor` (1:1 to `Usuario`, M2M to enabled `TipoSessao`), `Aluno` (optionally linked 1:1 to a `Usuario`, since a student may not have a login). Views follow one shared CRUD helper, `_crud_simples()` in `apps/cadastros/views.py`, reused across `alunos`/`equipamentos`/`tipos_sessao` — the pattern is list + inline create/update form + delete-by-POST-flag (`_excluir`) on the same page/template, no separate confirm page.
 - **`planos`** — `Plano` (recorrente-por-semana or pacote-de-sessões) and `Contratacao` (a student's active/encerrada/suspensa subscription to a plan). Views mirror the `cadastros` CRUD-on-one-page pattern but not via the shared helper (each is hand-written; keep that in mind if refactoring one).
+- **`financeiro`** — billing (Fase 2's "financeiro" pillar). `Cobranca` (one charge: `contratacao` FK, `competencia` free text — `"09/2026"` for a monthly charge, `"Pacote"` for a one-off package charge —, `valor`, `vencimento`, `status` pendente/paga/cancelada) plus `EventoCobranca` audit log. `servicos.py` is the only place that mutates a `Cobranca`: `gerar_cobrancas()` (idempotent per competência, gestor-triggered — no cron in this phase), `registrar_pagamento()`, `cancelar_cobranca()`. "Atrasada" isn't a stored status — it's `Cobranca.esta_atrasada`, derived from pendente + `vencimento` in the past, so nothing needs a periodic job just to flip a flag.
 - **`agenda`** — the scheduling core. See below.
 - **`painel`** — the home dashboard (`/`); `alertas.py` computes "upcoming session" notices for the logged-in user's role (professor sees their sessions, aluno sees theirs) for the next 24h.
 
