@@ -21,8 +21,15 @@ services:
       - key: ALLOWED_HOSTS
         sync: false          # ex.: studiofitness.com.br,www.studiofitness.com.br
       # Assistente da agenda (chat com LLM) — ver apps/assistente/ e CLAUDE.md.
+      # "True" fixo aqui (em vez de sync:false) é proposital: com sync:false
+      # um "Sync Blueprint" no painel do Render sobrescreveria de volta pro
+      # valor daqui de qualquer forma, então o botão flutuante só continua
+      # ativo se o valor do blueprint já for "True". O assistente ainda
+      # depende de GROQ_API_KEY/GEMINI_API_KEY (abaixo, sync:false) estar
+      # preenchida no painel — sem nenhuma chave, ele fica inativo mesmo
+      # com ASSISTENTE_ATIVO=True (ver config/settings.py).
       - key: ASSISTENTE_ATIVO
-        value: "False"        # mudar pra "True" só depois de configurar uma chave abaixo
+        value: "True"
       - key: LLM_PROVEDORES
         value: "groq,gemini"  # ordem de tentativa; Groq primeiro (ver README, seção de privacidade)
       - key: GROQ_API_KEY
